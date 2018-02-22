@@ -9,7 +9,7 @@ module Database.Bolt.Extras.Internal.Queries where
 import           Control.Monad     (zipWithM)
 import           Data.Map.Strict   (toList, (!))
 import           Data.Text         as T (Text, concat, cons, intercalate, pack,
-                                         toUpper, unpack)
+                                        toUpper, unpack)
 import           Database.Bolt     (BoltActionT, Node (..), Record,
                                     Relationship (..), URelationship (..),
                                     Value (..), exact, query)
