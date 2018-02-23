@@ -12,51 +12,61 @@ import           Data.Text                         as T (Text, concat, cons,
                                                          toUpper, unpack)
 import           Database.Bolt                     (BoltActionT, Node (..),
                                                     Record, URelationship (..),
-                                                    Value (..), exact, query)
-import           NeatInterpolation                 (text)
-import           Text.Printf                       (printf)
-
+                                                    Value (..), exact, at, query)
+import           Database.Bolt.Extras.Query.Cypher (ToCypher (..))
 import           Database.Bolt.Extras.Query.Entity
 import           Database.Bolt.Extras.Template
-{--------------------------------------------------------------------
-  Setters
---------------------------------------------------------------------}
-setNode :: Node -> BoltActionT IO Node
-setNode node@Node{..} = do
-  [record] <- query mergeQ
-  fromEntity <$> exactEntity var record
+import Control.Monad (forM)
+import           NeatInterpolation                 (text)
+import           Text.Printf                       (printf)
+import Debug.Trace (trace)
+
+-- | For given @Node _ labels nodeProps@ makes query @MERGE (n:labels {props}) RETURN ID(n) as n@
+-- and then return 'Node' with actual ID.
+--
+-- Potentially, if you MERGE some 'Node' and it labels and props are occured in
+-- several 'Node's, then the result can be not one but several 'Node's.
+--
+mergeNode :: Node -> BoltActionT IO [Node]
+mergeNode node@Node{..} = do
+  records      <- trace (unpack mergeQ) $ query mergeQ
+  forM records $ \record -> do
+    nodeIdentity' <- record `at` varQ >>= exact
+    pure $ node {nodeIdentity = nodeIdentity'}
   where
     [var] = generateEntityVars [toEntity node]
-    varQ  = varToText var
+    varQ  = toCypher var
 
-    labelsQ = toQueryText labels
-    propsQ  = T.intercalate (pack ",") . map toQueryText . toList $ nodeProps
+    labelsQ = toCypher labels
+    propsQ  = toCypher . toList $ nodeProps
 
     mergeQ :: Text
     mergeQ = [text|MERGE ($varQ $labelsQ {$propsQ})
-                   RETURN $varQ|]
+                   RETURN ID($varQ) as $varQ|]
 
-setRelationship :: Int -> Int -> URelationship -> BoltActionT IO URelationship
-setRelationship startNodeIdx endNodeIdx urel@URelationship{..} = do
-  [record] <- query mergeQ
-  fromEntity <$> exactEntity var record
+-- | Every relationship in Bolt protocol starts from one 'Node' and ends in anoter.
+-- For given starting and ending 'Node's, and for @URelationship  _ urelType urelProps@
+-- this method makes MERGE query and then return 'URelationship' with actual ID.
+mergeRelationship :: Node -> Node -> URelationship -> BoltActionT IO URelationship
+mergeRelationship startNode endNode urel@URelationship{..} = do
+  [record]      <- query mergeQ
+  urelIdentity' <- record `at` varQ >>= exact
+  pure $ urel {urelIdentity = urelIdentity'}
   where
     [var] = generateEntityVars [toEntity urel]
-    varQ = varToText var
+    varQ = toCypher var
+    
     mergeQ :: Text
     mergeQ = do
-      let labelQ = toQueryText urelType
-      let propsQ = T.intercalate (pack ",") . map toQueryText . toList $ urelProps
-      let startT = pack . show $ startNodeIdx
-      let endT = pack . show $ endNodeIdx
+      let labelQ = toCypher urelType
+      let propsQ = toCypher . toList $ urelProps
+      let startT = pack . show . nodeIdentity $ startNode
+      let endT = pack . show . nodeIdentity $ endNode
+      
       [text|MATCH (a), (b)
             WHERE ID(a) = $startT AND ID(b) = $endT
             MERGE (a)-[$varQ $labelQ {$propsQ}]->(b)
-            RETURN $varQ|]
-
-{--------------------------------------------------------------------
-  Getters
---------------------------------------------------------------------}
+            RETURN ID($varQ) as $varQ|]
 
 getNodes :: NodeSelector -> BoltActionT IO [Node]
 getNodes NodeSelector{..} = query getQ >>= exactNodes
@@ -67,59 +77,16 @@ getNodes NodeSelector{..} = query getQ >>= exactNodes
     getQ :: Text
     getQ = do
       let idQuard = maybe "" (pack . printf " WHERE ID(%s)=%d " (unpack varQ)) idS
-      let labelQuard = maybe "" toQueryText labelsS
+      let labelQuard = maybe "" toCypher labelsS
       [text|MATCH ($varQ $labelQuard) $idQuard
             RETURN $varQ|]
 
     exactNodes :: [Record] -> BoltActionT IO [Node]
     exactNodes = mapM (exact . (! varQ))
 
-{--------------------------------------------------------------------
-  Selectors
---------------------------------------------------------------------}
-
 data NodeSelector = NodeSelector { idS     :: Maybe Int
                                  , labelsS :: Maybe [Text]
                                  }
-
-{--------------------------------------------------------------------
- Internal
---------------------------------------------------------------------}
-
-{--------------------------------------------------------------------
-  Types
---------------------------------------------------------------------}
-
--- | The class to convert anything to ready-query representation.
-class ToQueryText a where
-  toQueryText :: a -> Text
-
-instance ToQueryText Label where
-  -- | Label with @name@ for query formatted into @:name@
-  toQueryText = cons ':'
-
-instance ToQueryText [Label] where
-  -- | If several labels should be formatted then we just concat them
-  toQueryText = T.concat . map toQueryText
-
-instance ToQueryText Property where
-   -- | Converts property (@('Text', 'Value')@) with @name@ and @value@ to query-ready @name:value@
-  toQueryText (propTitle, value) = T.concat [propTitle, pack ":", valueToText value]
-    where
-      valueToText :: Value -> Text
-      valueToText (N ())     = ""
-      valueToText (B bool)   = toUpper . pack . show $ bool
-      valueToText (I int)    = pack . show $ int
-      valueToText (F double) = pack . show $ double
-      valueToText (T t)      = T.concat ["\"", t,"\""]
-      valueToText (L values) = T.concat ["[", T.intercalate "," $ map valueToText values,"]"]
-      valueToText _          = error "Database.Neo4j.Setter.propToText: unacceptable Value type"
-
-instance ToQueryText [Property] where
-  -- | If several properties should be formatted then we just concat them
-  toQueryText = T.intercalate "," . map toQueryText
-
-
 
 
 
