@@ -21,8 +21,8 @@ import           Database.Bolt.Extras.Template.Types (FromValue (..),
 import           Instances.TH.Lift                   ()
 import           Language.Haskell.TH
 
--- | Describes a `bijective` class, i.e. class that has two functions: @phi :: a -> SomeType@ and @phiInv :: SomeType -> a@.
--- Requires class name, `SomeType` name and names of the class functions (phi and phiInv).
+-- | Describes a @bijective@ class, i.e. class that has two functions: @phi :: a -> SomeType@ and @phiInv :: SomeType -> a@.
+-- Requires class name, @SomeType@ name and names of the class functions (@phi@ and @phiInv@).
 --
 data BiClassInfo = BiClassInfo { className    :: Name
                                , dataName     :: Name
@@ -30,7 +30,7 @@ data BiClassInfo = BiClassInfo { className    :: Name
                                , classFromFun :: Name
                                }
 
--- | Example of `bijective` class is 'NodeLike'.
+-- | Example of @bijective@ class is 'NodeLike'.
 -- Describes conversions into and from 'Node'.
 -- That is, this class provides a bridge between Neo4j world and Haskell world.
 --
@@ -41,7 +41,7 @@ nodeLikeClass = BiClassInfo { className     = ''NodeLike
                             , classFromFun  = 'fromNode
                             }
 
--- | Another example of `bijective` class is 'URelationLike'.
+-- | Another example of @bijective@ class is 'URelationLike'.
 -- Describes conversions into and from 'URelationship'.
 --
 uRelationLikeClass :: BiClassInfo
@@ -86,33 +86,33 @@ makeURelationLike = makeBiClassInstance uRelationLikeClass
 
 
 -- | Declare an instance of `bijective` class using TemplateHaskell.
--- It eorks as follows:
+-- It works as follows:
 -- Say we have a type with field records, e.g.
 --
--- data VariableDomainScoring = VDS { specie   :: Text
---                                  , vgen     :: Double
---                                  , fr       :: Double
---                                  , sim      :: Double
---                                  , germline :: Text -- [IGHV3]-20*4_IGHD4*(3)_IGHJ6
--- }
+-- > data VariableDomainScoring = VDS { specie   :: Text
+-- >                                  , vgen     :: Double
+-- >                                  , fr       :: Double
+-- >                                  , sim      :: Double
+-- >                                  , germline :: Text
+-- >                                  }
 --
 -- As an example, transformation into Node is described below.
 --
--- data Node = Node { nodeIdentity :: Int             -- ^Neo4j node identifier
---                  , labels       :: [Text]          -- ^Set of node labels (types)
---                  , nodeProps    :: Map Text Value  -- ^Dict of node properties
---                  }
---   deriving (Show, Eq)
+-- > data Node = Node { nodeIdentity :: Int             -- ^Neo4j node identifier
+-- >                  , labels       :: [Text]          -- ^Set of node labels (types)
+-- >                  , nodeProps    :: Map Text Value  -- ^Dict of node properties
+-- >                  }
+-- >  deriving (Show, Eq)
 --
--- `nodeIdentity` will be set to a dummy value (-1). There is no way of obtaining object ID before uploading it into database.
--- `labels` will be set to type name, i.e. "VariableDomainScoring". This is due to our convention: object label into Neo4j is the same as its type name in Haskell.
--- `nodeProps` will be set to a Map: keys are field record names, values are data in the corresponding fields.
+-- @nodeIdentity@ will be set to a dummy value (-1). There is no way of obtaining object ID before uploading it into database.
+-- @labels@ will be set to type name, i.e. @VariableDomainScoring@. This is due to our convention: object label into Neo4j is the same as its type name in Haskell.
+-- @nodeProps@ will be set to a Map: keys are field record names, values are data in the corresponding fields.
 --
--- Therefore, applying toNode on a VariableDomainScoring will give the following:
--- Node { nodeIdentity = -1
---      , labels = ["VariableDomainScoring"]
---      , nodeProps = fromList [("specie", T "text value"), ("vgen", F %float_value), ("fr", F %float_value), ("sim", F %float_value), ("germline", T "text value")]
---      }
+-- Therefore, applying toNode on a @VariableDomainScoring@ will give the following:
+-- > Node { nodeIdentity = -1
+-- >      , labels = ["VariableDomainScoring"]
+-- >      , nodeProps = fromList [("specie", T "text value"), ("vgen", F %float_value), ("fr", F %float_value), ("sim", F %float_value), ("germline", T "text value")]
+-- >     }
 --
 makeBiClassInstance :: BiClassInfo -> Name -> Q [Dec]
 makeBiClassInstance BiClassInfo {..} typeCon = do
@@ -156,11 +156,11 @@ getConsFields (NormalC cName _)           = (cName, [])
 getConsFields _                           = error $ $currentLoc ++ "unsupported data declaration."
 
 
--- | Parse a type declaration and retrieve its name and its constructors
+-- | Parse a type declaration and retrieve its name and its constructors.
 --
 getTypeCons :: Dec -> (Name, [Con])
-getTypeCons (DataD _ typeName _ _ constructors _) = (typeName, constructors)
-getTypeCons (NewtypeD _ typeName _ _ constructor _) = (typeName, [constructor])
+getTypeCons (DataD    _ typeName _ _ constructors _) = (typeName, constructors)
+getTypeCons (NewtypeD _ typeName _ _ constructor  _) = (typeName, [constructor])
 getTypeCons otherDecl = error $ $currentLoc ++ "unsupported declaration: " ++ show otherDecl ++ "\nShould be either 'data' or 'newtype'."
 
 -- | Describes the body of conversion to target type function.
