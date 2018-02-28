@@ -4,7 +4,7 @@ module Database.Bolt.Extras.Query.Temp where
 
 -- @def@ from package data-default
 import           Data.Default               (def)
-import           Data.Map.Strict            (Map, fromList)
+import           Data.Map.Strict            (fromList)
 import           Database.Bolt
 import           Database.Bolt.Extras.Query
 import           Database.Bolt.Extras.Utils
@@ -44,12 +44,12 @@ runWithoutClass = do
   putStrLn . printf "Unioned node result: %s" $ show unioneds
 
   -- let select some nodes.
-  let simple' = head simples
-  let bigger' = head biggers
+  let simpleId = nodeIdentity $ head simples
+  let biggerId = nodeIdentity $ head biggers
 
   -- we can load relation only if nodes are loaded already and have "adequate" IDs.
   let relation = URelationship (-1) "THIS_IS_RELATION" $ fromList [("relFieldB", B True)]
-  relation' <- runQ $ mergeRelationship simple' bigger' relation
+  relation' <- runQ $ createRelationship simpleId relation biggerId
   putStrLn . printf "Relation result: %s" $ show relation'
 
 

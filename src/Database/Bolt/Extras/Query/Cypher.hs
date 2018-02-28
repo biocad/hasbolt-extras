@@ -18,9 +18,7 @@ module Database.Bolt.Extras.Query.Cypher
 import           Data.Text                         as T (Text, concat, cons,
                                                          intercalate, pack,
                                                          toUpper)
-import           Database.Bolt                     (BoltActionT, Node (..),
-                                                    Record, URelationship (..),
-                                                    Value (..), exact, query)
+import           Database.Bolt                     (Value (..))
 import           Database.Bolt.Extras.Query.Entity (EntityVar (..))
 import           Database.Bolt.Extras.Template     (Label, Property)
 import           Database.Bolt.Extras.Utils        (currentLoc)

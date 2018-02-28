@@ -4,22 +4,26 @@
 {-# LANGUAGE RecordWildCards      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Database.Bolt.Extras.Query.Queries where
+module Database.Bolt.Extras.Query.Queries
+  (
+    mergeNode
+  , createRelationship
+  , getNodes
+  ) where
 
+import           Control.Monad                     (forM)
+import           Control.Monad.IO.Class            (MonadIO)
 import           Data.Map.Strict                   (toList, (!))
-import           Data.Text                         as T (Text, concat, cons,
-                                                         intercalate, pack,
-                                                         toUpper, unpack)
+import           Data.Text                         as T (Text, pack, unpack)
 import           Database.Bolt                     (BoltActionT, Node (..),
                                                     Record, URelationship (..),
-                                                    Value (..), exact, at, query)
+                                                    at, exact, query)
 import           Database.Bolt.Extras.Query.Cypher (ToCypher (..))
 import           Database.Bolt.Extras.Query.Entity
-import           Database.Bolt.Extras.Template
-import Control.Monad (forM)
 import           NeatInterpolation                 (text)
+
+import           Debug.Trace                       (trace)
 import           Text.Printf                       (printf)
-import Debug.Trace (trace)
 
 -- | For given @Node _ labels nodeProps@ makes query @MERGE (n:labels {props}) RETURN ID(n) as n@
 -- and then return 'Node' with actual ID.
@@ -27,7 +31,7 @@ import Debug.Trace (trace)
 -- Potentially, if you MERGE some 'Node' and it labels and props are occured in
 -- several 'Node's, then the result can be not one but several 'Node's.
 --
-mergeNode :: Node -> BoltActionT IO [Node]
+mergeNode :: MonadIO m => Node -> BoltActionT m [Node]
 mergeNode node@Node{..} = do
   records      <- trace (unpack mergeQ) $ query mergeQ
   forM records $ \record -> do
@@ -47,22 +51,22 @@ mergeNode node@Node{..} = do
 -- | Every relationship in Bolt protocol starts from one 'Node' and ends in anoter.
 -- For given starting and ending 'Node's, and for @URelationship  _ urelType urelProps@
 -- this method makes MERGE query and then return 'URelationship' with actual ID.
-mergeRelationship :: Node -> Node -> URelationship -> BoltActionT IO URelationship
-mergeRelationship startNode endNode urel@URelationship{..} = do
+createRelationship :: MonadIO m => Int -> URelationship -> Int -> BoltActionT m URelationship
+createRelationship start urel@URelationship{..} end = do
   [record]      <- query mergeQ
   urelIdentity' <- record `at` varQ >>= exact
   pure $ urel {urelIdentity = urelIdentity'}
   where
     [var] = generateEntityVars [toEntity urel]
     varQ = toCypher var
-    
+
     mergeQ :: Text
     mergeQ = do
       let labelQ = toCypher urelType
       let propsQ = toCypher . toList $ urelProps
-      let startT = pack . show . nodeIdentity $ startNode
-      let endT = pack . show . nodeIdentity $ endNode
-      
+      let startT = pack . show $ start
+      let endT = pack . show $ end
+
       [text|MATCH (a), (b)
             WHERE ID(a) = $startT AND ID(b) = $endT
             MERGE (a)-[$varQ $labelQ {$propsQ}]->(b)
