@@ -8,6 +8,7 @@ import           Data.Map.Strict            (fromList)
 import           Database.Bolt
 import           Database.Bolt.Extras.Query
 import           Database.Bolt.Extras.Utils
+import           Database.Bolt.Id (GetBoltId (..))
 import           Text.Printf                (printf)
 
 -- | this function just run prepared query and return answer
@@ -44,8 +45,8 @@ runWithoutClass = do
   putStrLn . printf "Unioned node result: %s" $ show unioneds
 
   -- let select some nodes.
-  let simpleId = nodeIdentity $ head simples
-  let biggerId = nodeIdentity $ head biggers
+  let simpleId = getBoltId $ head simples
+  let biggerId = getBoltId $ head biggers
 
   -- we can load relation only if nodes are loaded already and have "adequate" IDs.
   let relation = URelationship (-1) "THIS_IS_RELATION" $ fromList [("relFieldB", B True)]

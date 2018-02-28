@@ -20,6 +20,7 @@ import           Database.Bolt                     (BoltActionT, Node (..),
                                                     at, exact, query)
 import           Database.Bolt.Extras.Query.Cypher (ToCypher (..))
 import           Database.Bolt.Extras.Query.Entity
+import           Database.Bolt.Id (BoltId (..))
 import           NeatInterpolation                 (text)
 
 import           Debug.Trace                       (trace)
@@ -51,7 +52,7 @@ mergeNode node@Node{..} = do
 -- | Every relationship in Bolt protocol starts from one 'Node' and ends in anoter.
 -- For given starting and ending 'Node's, and for @URelationship  _ urelType urelProps@
 -- this method makes MERGE query and then return 'URelationship' with actual ID.
-createRelationship :: MonadIO m => Int -> URelationship -> Int -> BoltActionT m URelationship
+createRelationship :: MonadIO m => BoltId -> URelationship -> BoltId -> BoltActionT m URelationship
 createRelationship start urel@URelationship{..} end = do
   [record]      <- query mergeQ
   urelIdentity' <- record `at` varQ >>= exact
@@ -64,8 +65,8 @@ createRelationship start urel@URelationship{..} end = do
     mergeQ = do
       let labelQ = toCypher urelType
       let propsQ = toCypher . toList $ urelProps
-      let startT = pack . show $ start
-      let endT = pack . show $ end
+      let startT = pack . show . boltId $ start
+      let endT = pack . show . boltId $ end
 
       [text|MATCH (a), (b)
             WHERE ID(a) = $startT AND ID(b) = $endT

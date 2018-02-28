@@ -23,7 +23,8 @@ source-repository head
 
 library
   hs-source-dirs:   src
-  exposed-modules:  Database.Bolt.Extras.Query
+  exposed-modules:  Database.Bolt.Id
+                  , Database.Bolt.Extras.Query
                   , Database.Bolt.Extras.Utils
                   , Database.Bolt.Extras.Template
                   , Database.Bolt.Extras.Query.Temp
