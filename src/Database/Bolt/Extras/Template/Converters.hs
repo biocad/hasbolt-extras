@@ -10,7 +10,6 @@ module Database.Bolt.Extras.Template.Converters
 import           Control.Lens                        (view, _1)
 import           Data.Map.Strict                     (fromList, member, (!))
 import           Data.Text                           (Text, pack, unpack)
-import           Database.Bolt.Extras.Utils           (currentLoc, dummyId)
 import           Database.Bolt.Extras.Template.Types (FromValue (..),
                                                       Labels (..), Node (..),
                                                       NodeLike (..),
@@ -18,6 +17,7 @@ import           Database.Bolt.Extras.Template.Types (FromValue (..),
                                                       ToValue (..),
                                                       URelationLike (..),
                                                       URelationship (..))
+import           Database.Bolt.Extras.Utils          (currentLoc, dummyId)
 import           Instances.TH.Lift                   ()
 import           Language.Haskell.TH
 
@@ -147,7 +147,7 @@ makeBiClassInstance BiClassInfo {..} typeCon = do
 
 
 -- | Extract information about type: constructor name and field record names.
--- 
+--
 getConsFields :: Con -> (Name, [Name])
 getConsFields (RecC cName decs)           = (cName, fmap (view _1) decs)
 getConsFields (ForallC _ _ cons)          = getConsFields cons
@@ -169,12 +169,16 @@ makeToClause :: String -> Name -> Name -> [Name] -> Q Clause
 makeToClause label dataCons varName dataFields | null dataFields = pure $ Clause [WildP] (NormalB result) []
                                                | otherwise       = pure $ Clause [VarP varName] (NormalB result) []
   where
+    -- apply field record to a data.
+    getValue :: Name -> Exp
+    getValue name = AppE (VarE name) (VarE varName)
+
     -- List of values which a data holds.
     -- The same in terms of Haskell :: valuesExp = fmap (\field -> toValue (field x))
     -- `x` is a bounded in pattern match variable (e.g. toNode x = ...). If toNode :: a -> Node, then x :: a, i.e. x is data which we want to convert into Node.
     -- `field` is a field record function.
     valuesExp :: [Exp]
-    valuesExp = fmap (\fld -> AppE (VarE 'toValue) (AppE (VarE fld) (VarE varName))) dataFields
+    valuesExp = fmap (\fld -> AppE (VarE 'toValue) (getValue fld)) dataFields
 
     -- Retrieve all field record names from the convertible type.
     fieldNames :: [String]

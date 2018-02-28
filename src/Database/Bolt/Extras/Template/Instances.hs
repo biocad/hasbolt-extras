@@ -39,6 +39,10 @@ instance ToValue Value where
 instance ToValue a => ToValue [a] where
   toValue = L . fmap toValue
 
+instance ToValue a => ToValue (Maybe a) where
+  toValue (Just a) = toValue a
+  toValue _        = toValue ()
+
 instance ToValue (Map Text Value) where
   toValue = M
 
@@ -75,6 +79,10 @@ instance FromValue Value where
 instance FromValue a => FromValue [a] where
   fromValue (L listV) = fmap fromValue listV
   fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into [Value]"
+
+instance FromValue a => FromValue (Maybe a) where
+  fromValue (N ()) = Nothing
+  fromValue a = Just $ fromValue a
 
 instance FromValue (Map Text Value) where
   fromValue (M mapV) = mapV
