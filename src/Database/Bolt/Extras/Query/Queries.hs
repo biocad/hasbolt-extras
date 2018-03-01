@@ -19,11 +19,10 @@ import           Database.Bolt                     (BoltActionT, Node (..),
                                                     Record, URelationship (..),
                                                     at, exact, query)
 import           Database.Bolt.Extras.Query.Cypher (ToCypher (..))
-import           Database.Bolt.Extras.Query.Entity
-import           Database.Bolt.Id (BoltId (..))
+import           Database.Bolt.Extras.Query.Entity (EntityLike (..),
+                                                    generateEntityVars)
+import           Database.Bolt.Id                  (BoltId (..))
 import           NeatInterpolation                 (text)
-
-import           Debug.Trace                       (trace)
 import           Text.Printf                       (printf)
 
 -- | For given @Node _ labels nodeProps@ makes query @MERGE (n:labels {props}) RETURN ID(n) as n@
@@ -34,7 +33,7 @@ import           Text.Printf                       (printf)
 --
 mergeNode :: MonadIO m => Node -> BoltActionT m [Node]
 mergeNode node@Node{..} = do
-  records      <- trace (unpack mergeQ) $ query mergeQ
+  records      <- query mergeQ
   forM records $ \record -> do
     nodeIdentity' <- record `at` varQ >>= exact
     pure $ node {nodeIdentity = nodeIdentity'}
