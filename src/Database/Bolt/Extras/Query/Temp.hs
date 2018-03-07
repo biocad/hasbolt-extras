@@ -28,7 +28,7 @@ runQ action = do
     pure result
   where
     boltCfg = def { user     = "neo4j"     -- database login, neo4h by default
-                  , password = "lvbm123"   -- password for database
+                  , password = "1"   -- password for database
                   , host     = "localhost" -- host with database
                   , port     = 7687        -- standart port
                   }
@@ -65,9 +65,9 @@ runWithoutClass = do
   let r3 = toURelation $ THIS_IS_ANOTHER_RELATION
 
   let rels = [(0, 1), (1, 2), (0, 2), (1, 3)]
-  let graph = GraphU [f, s, t, e] [r1, r2, r2, r3]
-  result <- runQ $ createGraph graph rels
-  putStrLn $ show result
+  let graph = GraphU [f, s, t, e] [r1, r2, r2, r3] rels
+  result <- runQ $ createGraph graph
+  --putStrLn $ show result
   let smth1Id = getBoltId $ (_vertices result) !! 0
   let smth2Id = getBoltId $ (_vertices result) !! 1
   let dsmth1Id = getBoltId $ (_vertices result) !! 2
@@ -82,15 +82,15 @@ runWithoutClass = do
   --relation3 <- runQ $ createRelationship smth1Id r2 dsmth1Id
   --relation4 <- runQ $ createRelationship smth2Id r3 dsmth2Id
 --
-  let sel1 = NodeSelector (Just smth1Id) "a" Nothing
-  let sel2 = NodeSelector (Just smth2Id) "b" Nothing
-  let sel3 = NodeSelector (Just dsmth1Id) "c" Nothing
-  let sel4 = NodeSelector (Just dsmth2Id) "d" Nothing
+  let sel1 = NodeSelector (Just smth1Id) Nothing
+  let sel2 = NodeSelector (Just smth2Id) Nothing
+  let sel3 = NodeSelector (Just dsmth1Id) Nothing
+  let sel4 = NodeSelector (Just dsmth2Id) Nothing
 
-  let selector11 = RelGraphSelector (Just 0) (Just 1) "r" Nothing
-  let selector12 = RelGraphSelector (Just 1) (Just 2) "w" Nothing
-  let selector13 = RelGraphSelector (Just 0) (Just 2) "x" Nothing
-  let selector14 = RelGraphSelector (Just 1) (Just 3) "y" Nothing
+  let selector11 = ListSelector (Just 0) (Just 1) Nothing
+  let selector12 = ListSelector (Just 1) (Just 2) Nothing
+  let selector13 = ListSelector (Just 0) (Just 2) Nothing
+  let selector14 = ListSelector (Just 1) (Just 3)  Nothing
 
   let graphSel = GraphSelector [sel1, sel2, sel3, sel4] [selector11, selector12, selector13, selector14]
 
