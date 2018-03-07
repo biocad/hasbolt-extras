@@ -18,6 +18,7 @@ module Database.Bolt.Extras.Query.Queries
   , Graph (..)
   ) where
 
+import           Control.Monad.IO.Class            (MonadIO)
 import           Control.Applicative               (liftA2)
 import           Control.Monad                     (forM)
 import           Data.List                         (foldl')
@@ -27,7 +28,8 @@ import qualified Data.Text                         as T (Text, intercalate,
 import           Database.Bolt                     (BoltActionT, Node (..),
                                                     Record, Relationship (..),
                                                     URelationship (..), at,
-                                                    exact, query)
+                                                    exact, query,
+                                                    RecordValue (..))
 import           Database.Bolt.Extras.Query.Cypher (ToCypher (..))
 import           Database.Bolt.Extras.Query.Entity (EntityLike (..),
                                                     generateEntityVars)
@@ -40,7 +42,7 @@ import           Text.Printf                       (printf)
 -- Potentially, if you MERGE some 'Node' and it labels and props are occured in
 -- several 'Node's, then the result can be not one but several 'Node's.
 --
-mergeNode :: Node -> BoltActionT IO [Node]
+mergeNode :: (MonadIO m) => Node -> BoltActionT m [Node]
 mergeNode node@Node{..} = do
   records      <- query mergeQ
   forM records $ \record -> do
@@ -66,7 +68,7 @@ fromU st URelationship{..} end = Relationship urelIdentity st end urelType urelP
 -- | Every relationship in Bolt protocol starts from one 'Node' and ends in anoter.
 -- For given starting and ending 'Node's, and for @URelationship  _ urelType urelProps@
 -- this method makes MERGE query and then return 'Relationship' with actual ID.
-createRelationship :: BoltId -> URelationship -> BoltId -> BoltActionT IO Relationship
+createRelationship :: (MonadIO m) => BoltId -> URelationship -> BoltId -> BoltActionT m Relationship
 createRelationship start urel@URelationship{..} end = do
   [record]      <- query mergeQ
   urelIdentity' <- record `at` varQ >>= exact
@@ -97,7 +99,7 @@ data NodeSelector = NodeSelector { _boltIdQ   :: Maybe BoltId
                                  }
 
 -- | Using the given NodeSelector returns the list of all 'Node's, matching it.
-getNodes :: NodeSelector -> BoltActionT IO [Node]
+getNodes :: (MonadIO m) => NodeSelector -> BoltActionT m [Node]
 getNodes NodeSelector{..} = query getQ >>= exactNodes
   where
     getQ :: T.Text
@@ -107,7 +109,7 @@ getNodes NodeSelector{..} = query getQ >>= exactNodes
       [text|MATCH (${_varQNName} $labelQuard) $idQuard
             RETURN ${_varQNName}|]
 
-    exactNodes :: [Record] -> BoltActionT IO [Node]
+    exactNodes :: (MonadIO m) => [Record] -> BoltActionT m [Node]
     exactNodes = mapM (exact . (! _varQNName))
 
 
@@ -129,7 +131,7 @@ data RelSelector = RelSelector { startNodeBoltId :: Maybe BoltId
 
 -- | Using the given RelSelector find all 'Relationship's, matching it.
 -- This function can't be called "inside" Graph.
-getRelationships :: RelSelector -> BoltActionT IO [Relationship]
+getRelationships :: (MonadIO m) => RelSelector -> BoltActionT m [Relationship]
 getRelationships RelSelector{..} = query getQ >>= exactRelationships
   where
     getQ :: T.Text
@@ -143,7 +145,7 @@ getRelationships RelSelector{..} = query getQ >>= exactRelationships
             MATCH (a)-[$varQRName $typeR]->(b)
             RETURN $varQRName|]
 
-    exactRelationships :: [Record] -> BoltActionT IO [Relationship]
+    exactRelationships :: (MonadIO m) => [Record] -> BoltActionT m [Relationship]
     exactRelationships = mapM (exact . (! varQRName))
 
 getRelationships RelGraphSelector{..} = error "cant get relationship without graph"
@@ -166,11 +168,11 @@ data GraphSelector = GraphSelector { _verticesSelector      :: [NodeSelector]
 
 -- | For the given GraphSelector find the graph, which matches it.
 -- This function creates single cypher query and performs it.
-getGraph :: GraphSelector -> BoltActionT IO Graph
+getGraph :: (MonadIO m) => GraphSelector -> BoltActionT m Graph
 getGraph GraphSelector{..} = do
   res <- query getQ
-  let nodes = fmap (foldl' (++) []) (sequenceA $ fmap (\f -> f res) resultNodes)
-  let edges = fmap (foldl' (++) []) (sequenceA $ fmap (\f -> f res) resultEdges)
+  let nodes = fmap (foldl' (++) []) (exactValues (map _varQNName _verticesSelector) res)
+  let edges = fmap (foldl' (++) []) (exactValues (map varQRName _relationshipsSelector) res)
   liftA2 Graph nodes edges
   where
     getQ :: T.Text
@@ -204,17 +206,14 @@ getGraph GraphSelector{..} = do
             RETURN $returnNodes, $returnEdges|]
 
 
-    resultNodes :: [[Record] -> BoltActionT IO [Node]]
-    resultNodes = map (\ns -> mapM (exact . (! _varQNName ns))) _verticesSelector
 
-    resultEdges :: [[Record] -> BoltActionT IO [Relationship]]
-    resultEdges = map (\rs -> mapM (exact . (! varQRName rs))) _relationshipsSelector
-
+    exactValues :: (MonadIO m, RecordValue a) => [T.Text] -> [Record] -> BoltActionT m [[a]]
+    exactValues vars = mapM (\record -> mapM (\var -> exact (record ! var) ) vars)
 
 -- | Create Graph using given GraphU and the list describing 'Node's indices (from the given _vertices),
 -- which should be connected by the corresponding 'Relationship'.
 -- If there were multiple choices while merging given _vertices, the first match is used for connection.
-createGraph :: Graph -> [(Int, Int)] -> BoltActionT IO Graph
+createGraph :: (MonadIO m) => Graph -> [(Int, Int)] -> BoltActionT m Graph
 createGraph graph rels = do
   nodes <- sequenceA $ fmap mergeNode (_vertices graph)
   edges <- sequenceA $
