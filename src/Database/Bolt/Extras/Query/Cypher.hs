@@ -19,7 +19,6 @@ import           Data.Text                         as T (Text, concat, cons,
                                                          intercalate, pack,
                                                          toUpper)
 import           Database.Bolt                     (Value (..))
-import           Database.Bolt.Extras.Query.Entity (EntityVar (..))
 import           Database.Bolt.Extras.Template     (Label, Property)
 import           Database.Bolt.Extras.Utils        (currentLoc)
 import           NeatInterpolation                 (text)
@@ -60,9 +59,4 @@ instance ToCypher Property where
 --
 instance ToCypher [Property] where
   toCypher = T.intercalate "," . map toCypher
-
--- | 'EntityVar' formatting is just extracting the inner text.
-instance ToCypher EntityVar where
-  toCypher (NodeVar n) = n
-  toCypher (URelVar u) = u
 

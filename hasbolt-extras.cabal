@@ -31,7 +31,6 @@ library
   other-modules:    Database.Bolt.Extras.Template.Converters
                   , Database.Bolt.Extras.Template.Types
                   , Database.Bolt.Extras.Template.Instances
-                  , Database.Bolt.Extras.Query.Entity
                   , Database.Bolt.Extras.Query.Queries
                   , Database.Bolt.Extras.Query.Cypher
                   , Database.Bolt.Extras.Query.Selectors

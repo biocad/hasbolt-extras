@@ -11,14 +11,16 @@ module Database.Bolt.Extras.Query.BoltGraph
     , createGraph
     , vertices
     , relations
+    , addNode
+    , addRelation
     , NodeName
     ) where
 
 import           Control.Applicative                  (liftA2)
 import           Control.Lens                         (makeLenses, over)
 import           Control.Monad.IO.Class               (MonadIO)
-import           Data.Map.Strict                      (toList, (!), insert, mapWithKey, keys)
-import qualified Data.Map.Strict                      as M (Map, map)
+import           Data.Map.Strict                      (Map, notMember, toList, (!), insert, mapWithKey, keys)
+import qualified Data.Map.Strict                      as M (map)
 import qualified Data.Text                            as T (Text, concat,
                                                             intercalate, pack)
 import           Database.Bolt                        (BoltActionT, Node (..),
@@ -27,8 +29,6 @@ import           Database.Bolt                        (BoltActionT, Node (..),
                                                        URelationship (..),
                                                        exact, query)
 import           Database.Bolt.Extras.Query.Cypher    (ToCypher (..))
-import           Database.Bolt.Extras.Query.Entity    (EntityLike (..),
-                                                       generateEntityVars)
 import           Database.Bolt.Extras.Query.Queries   (UploadTypedNode (..),
                                                        createRelationship,
                                                        uploadNode)
@@ -40,17 +40,21 @@ import           NeatInterpolation                    (text)
 import           Text.Printf                          (printf)
 
 
-data Graph n a b = Graph { _vertices  :: M.Map n a
-                         , _relations :: M.Map (n, n) b
+data Graph n a b = Graph { _vertices  :: Map n a
+                         , _relations :: Map (n, n) b
                          } deriving (Show)
 
 makeLenses ''Graph
 
 addNode :: Ord n => n -> a -> Graph n a b -> Graph n a b
-addNode name node = over vertices (insert name node)
+addNode name node graph = if name `notMember` (_vertices graph)
+                          then over vertices (insert name node) graph
+                          else error "vertex' key already exists"
 
 addRelation :: Ord n => n -> n -> b -> Graph n a b -> Graph n a b
-addRelation startName endName rel = over relations (insert (startName, endName) rel)
+addRelation startName endName rel graph = if (startName, endName) `notMember` (_relations graph)
+                                          then over relations (insert (startName, endName) rel) graph
+                                          else error "relation' key already exists"
 
 type NodeName = T.Text
 
@@ -68,20 +72,20 @@ type QueryGraphSelector = Graph NodeName NodeSelector URelSelector
 getGraph :: (MonadIO m) => QueryGraphSelector -> BoltActionT m ReturnedGraph
 getGraph queryGraph = do
   res <- query getQ
-  let nodes = sequenceA $ mapWithKey (\key _ -> fmap head (exactValues key res)) vertices
+  let nodes = sequenceA $ mapWithKey (\key _ -> fmap head (exactValues key res)) vertices'
   let edges = sequenceA $ mapWithKey (\key _ -> fmap (makeU . head) (exactValues
                                        (T.concat [fst key, "0", snd key]) res)) rels
   liftA2 Graph nodes edges
   where
 
-    vertices :: M.Map NodeName NodeSelector
-    vertices = _vertices queryGraph
+    vertices' :: Map NodeName NodeSelector
+    vertices' = _vertices queryGraph
 
-    rels :: M.Map (NodeName, NodeName) URelSelector
+    rels :: Map (NodeName, NodeName) URelSelector
     rels = _relations queryGraph
 
     nodeVars :: [T.Text]
-    nodeVars = keys vertices
+    nodeVars = keys vertices'
     --nodeVars = map toCypher $ generateEntityVars (map toEntity
     --              [ (Node i lbl (fromList [])) | vs <- verticesSelector,
     --                                             let i = (boltId . fromMaybe (fromInt (-1)) . boltIdQ) vs,
@@ -97,22 +101,22 @@ getGraph queryGraph = do
     getQ = do
       let nodes = T.intercalate "," $ map (\(k, v) -> do
                                             let labels = maybe "" toCypher (labelsS v)
-                                            [text|($k $labels)|]) (toList vertices)
+                                            [text|($k $labels)|]) (toList vertices')
       let returnNodes = T.intercalate "," nodeVars
       let conditions = (T.intercalate " AND " . filter (/= "\n")) $ map (\(k, v) -> do
                                     let name = k
                                     let boltIdQR = maybe ""
                                                    (T.pack . printf "ID(%s)=%d" name . boltId)
                                                    (boltIdQ v)
-                                    [text|$boltIdQR|]) (toList vertices)
+                                    [text|$boltIdQR|]) (toList vertices')
       let edges = T.intercalate "," $ map (\(k, v) -> do
                                             let name   = T.concat [fst k, "0", snd k]
                                             --let rs     = listSelector !! i
                                             let typeQ  = maybe "" toCypher (typeLS v)
                                             let stNode = fst k
-                                            let stNodeLabels = maybe "" toCypher $ labelsS (vertices ! stNode)
+                                            let stNodeLabels = maybe "" toCypher $ labelsS (vertices' ! stNode)
                                             let endNode = snd k
-                                            let endNodeLabels = maybe "" toCypher $ labelsS (vertices ! endNode)
+                                            let endNodeLabels = maybe "" toCypher $ labelsS (vertices' ! endNode)
                                             [text|($stNode $stNodeLabels)-[$name $typeQ]-($endNode $endNodeLabels)|])
                                           (toList rels)
 
@@ -133,9 +137,9 @@ getGraph queryGraph = do
 -- If there were multiple choices while merging given _vertices, the first match is used for connection.
 createGraph :: (MonadIO m) => QueryGraph -> BoltActionT m ResponseGraph
 createGraph queryGraph = do
-  let vertices = _vertices queryGraph
+  let vertices' = _vertices queryGraph
   let rels = _relations queryGraph
-  nodes <- sequenceA $ M.map (fmap head . uploadNode) vertices
+  nodes <- sequenceA $ M.map (fmap head . uploadNode) vertices'
   edges <- sequenceA $
           mapWithKey (\key v -> do
               let stNode  = nodes ! fst key

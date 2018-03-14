@@ -23,8 +23,6 @@ import           Database.Bolt                        (BoltActionT, Node (..),
                                                        URelationship (..), at,
                                                        exact, query)
 import           Database.Bolt.Extras.Query.Cypher    (ToCypher (..))
-import           Database.Bolt.Extras.Query.Entity    (EntityLike (..),
-                                                       generateEntityVars)
 import           Database.Bolt.Extras.Query.Selectors (NodeSelector (..),
                                                        RelSelector (..))
 import           Database.Bolt.Id                     (BoltId (..), fromInt)
@@ -53,8 +51,7 @@ uploadNode ut = case ut of
   where
     helper :: (MonadIO m) => T.Text -> Node -> BoltActionT m [BoltId]
     helper q node = do
-      let [var] = generateEntityVars [toEntity node]
-      let varQ  = toCypher var
+      let varQ  = "n"
 
       let labelsQ = toCypher $ labels node
       let propsQ  = toCypher . toList $ nodeProps node
@@ -72,13 +69,12 @@ uploadNode ut = case ut of
 -- For given starting and ending 'Node's, and for @URelationship  _ urelType urelProps@
 -- this method makes MERGE query and then return 'Relationship' with actual ID.
 createRelationship :: (MonadIO m) => BoltId -> URelationship -> BoltId -> BoltActionT m BoltId
-createRelationship start urel@URelationship{..} end = do
+createRelationship start URelationship{..} end = do
   [record]      <- query mergeQ
   urelIdentity' <- record `at` varQ >>= exact
   pure $ fromInt urelIdentity'
   where
-    [var] = generateEntityVars [toEntity urel]
-    varQ = toCypher var
+    varQ = "r"
 
     mergeQ :: T.Text
     mergeQ = do
