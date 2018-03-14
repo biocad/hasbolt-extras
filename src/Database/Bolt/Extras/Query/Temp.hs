@@ -1,21 +1,26 @@
 {-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE TemplateHaskell     #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
 
 module Database.Bolt.Extras.Query.Temp where
 
 -- @def@ from package data-default
 import           Data.Default                        (def)
 import           Data.Map.Strict                     (fromList)
-import qualified Data.Text                           as T (Text)
+import qualified Data.Map.Strict                     as M (Map, adjust, assocs,
+                                                           keys, map, mapKeys,
+                                                           mapWithKey, toList,
+                                                           (!))
+import qualified Data.Text                           as T (Text, pack)
 import           Database.Bolt
 import           Database.Bolt.Extras.Query
 import           Database.Bolt.Extras.Template       (makeNodeLike,
                                                       makeURelationLike)
 import           Database.Bolt.Extras.Template.Types
 import           Database.Bolt.Extras.Utils
-import           Database.Bolt.Id                    (GetBoltId (..))
+import           Database.Bolt.Id                    (BoltId (..),
+                                                      GetBoltId (..), fromInt)
 import           Text.Printf                         (printf)
 
 
@@ -55,54 +60,50 @@ makeU Relationship{..} = URelationship relIdentity relType relProps
 
 runWithoutClass :: IO ()
 runWithoutClass = do
-  let f = toNode $ Smth 1
-  let s = toNode $ Smth 2
-  let t = toNode $ DoubleSmth 1
-  let e = toNode $ DoubleSmth 2
+  let f = Create (toNode $ Smth 1)
+  let s = Create (toNode $ Smth 2)
+  let t = Create (toNode $ DoubleSmth 1)
+  let e = Create (toNode $ DoubleSmth 2)
 
   let r1 = toURelation $ THIS_IS_RELATION 20
   let r2 = toURelation $ THIS_IS_RELATION 40
   let r3 = toURelation $ THIS_IS_ANOTHER_RELATION
-
-  let rels = [(0, 1), (1, 2), (0, 2), (1, 3)]
-  let graph = GraphU [f, s, t, e] [r1, r2, r2, r3] rels
+  let nodes = fromList [("f", f), ("s", s), ("t", t), ("e", e)]
+  let rels = fromList [(("f", "s"), r1), (("s", "t"), r2), (("f", "t"), r2), (("s", "e"), r3)]
+  let graph = Graph nodes rels
   result <- runQ $ createGraph graph
-  --putStrLn $ show result
-  let smth1Id = getBoltId $ (_vertices result) !! 0
-  let smth2Id = getBoltId $ (_vertices result) !! 1
-  let dsmth1Id = getBoltId $ (_vertices result) !! 2
-  let dsmth2Id = getBoltId $ (_vertices result) !! 3
+  putStrLn $ show result
 
-  --let r1 = toURelation $ THIS_IS_RELATION 20
-  --let r2 = toURelation $ THIS_IS_RELATION 40
-  --let r3 = toURelation $ THIS_IS_ANOTHER_RELATION
-  --
-  --relation1 <- runQ $ createRelationship smth1Id r1 smth2Id
-  --relation2 <- runQ $ createRelationship smth2Id r2 dsmth1Id
-  --relation3 <- runQ $ createRelationship smth1Id r2 dsmth1Id
-  --relation4 <- runQ $ createRelationship smth2Id r3 dsmth2Id
---
+
+  let smth1Id = (_vertices result) M.! (T.pack "f")
+  let smth2Id = (_vertices result) M.! "s"
+  let dsmth1Id = (_vertices result) M.! "t"
+  let dsmth2Id = (_vertices result) M.! "e"
   let sel1 = NodeSelector (Just smth1Id) Nothing
   let sel2 = NodeSelector (Just smth2Id) Nothing
   let sel3 = NodeSelector (Just dsmth1Id) Nothing
   let sel4 = NodeSelector (Just dsmth2Id) Nothing
-
-  let selector11 = ListSelector (Just 0) (Just 1) Nothing
-  let selector12 = ListSelector (Just 1) (Just 2) Nothing
-  let selector13 = ListSelector (Just 0) (Just 2) Nothing
-  let selector14 = ListSelector (Just 1) (Just 3)  Nothing
-
-  let graphSel = GraphSelector [sel1, sel2, sel3, sel4] [selector11, selector12, selector13, selector14]
-
+--
+  let selector11 = URelSelector Nothing
+  let selector12 = URelSelector Nothing
+  let selector13 = URelSelector Nothing
+--
+  let graphSel = Graph (fromList [("f", sel1), ("s", sel2), ("t", sel3), ("e", sel4)])
+                                    (fromList [(("f", "s"), selector11), (("s", "t"), selector12), (("f", "t"), selector12), (("s", "e"), selector13)])
   result <- runQ $ getGraph graphSel
-  let a :: Smth = fromNode $ (_vertices result) !! 0
-  let b :: Smth = fromNode $ (_vertices result) !! 1
-  let c :: DoubleSmth = fromNode $ (_vertices result) !! 2
-  let d :: DoubleSmth = fromNode $ (_vertices result) !! 3
-  let aa :: THIS_IS_RELATION = fromURelation $ makeU ((_edges result) !! 0)
-  let bb :: THIS_IS_RELATION = fromURelation $ makeU ((_edges result) !! 1)
-  let cc :: THIS_IS_RELATION = fromURelation $ makeU ((_edges result) !! 2)
-  let dd :: THIS_IS_ANOTHER_RELATION = fromURelation $ makeU ((_edges result) !! 3)
+
+  putStrLn $ show result
+
+
+  let a :: Smth = fromNode $ ((_vertices result) M.! "f")
+  let b :: Smth = fromNode $ ((_vertices result) M.! "s")
+  let c :: DoubleSmth = fromNode $ ((_vertices result) M.! "t")
+  let d :: DoubleSmth = fromNode $ ((_vertices result) M.! "e")
+  let aa :: THIS_IS_RELATION = fromURelation $ ((_relations result) M.! ("f", "s"))
+  let bb :: THIS_IS_RELATION = fromURelation $ ((_relations result) M.! ("s", "t"))
+  let cc :: THIS_IS_RELATION = fromURelation $ ((_relations result) M.! ("f", "t"))
+  let dd :: THIS_IS_ANOTHER_RELATION = fromURelation $ ((_relations result) M.! ("s", "e"))
+
 
   putStrLn $ show result
 
@@ -115,6 +116,37 @@ runWithoutClass = do
   putStrLn $ show bb
   putStrLn $ show cc
   putStrLn $ show dd
+--
+  --let rels = [(0, 1), (1, 2), (0, 2), (1, 3)]
+  --let graph = BoltGraphU [f, s, t, e] [r1, r2, r2, r3] rels
+  --result <- runQ $ createGraph graph
+  ----putStrLn $ show result
+  --let smth1Id = getBoltId $ (vertices result) !! 0
+  --let smth2Id = getBoltId $ (vertices result) !! 1
+  --let dsmth1Id = getBoltId $ (vertices result) !! 2
+  --let dsmth2Id = getBoltId $ (vertices result) !! 3
+--
+  ----let r1 = toURelation $ THIS_IS_RELATION 20
+  ----let r2 = toURelation $ THIS_IS_RELATION 40
+  ----let r3 = toURelation $ THIS_IS_ANOTHER_RELATION
+  ----
+  ----relation1 <- runQ $ createRelationship smth1Id r1 smth2Id
+  ----relation2 <- runQ $ createRelationship smth2Id r2 dsmth1Id
+  ----relation3 <- runQ $ createRelationship smth1Id r2 dsmth1Id
+  ----relation4 <- runQ $ createRelationship smth2Id r3 dsmth2Id
+----
+--
+  --putStrLn $ show result
+--
+  --putStrLn $ show a
+  --putStrLn $ show b
+  --putStrLn $ show c
+  --putStrLn $ show d
+--
+  --putStrLn $ show aa
+  --putStrLn $ show bb
+  --putStrLn $ show cc
+  --putStrLn $ show dd
   -- initialise Simple node and merge it into database.
   --let simple = Node (-1) ["Simple"] $ fromList [("fieldS", T "This is Text")]
   --simples <- runQ $ mergeNode simple

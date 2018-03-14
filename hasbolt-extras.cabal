@@ -4,7 +4,7 @@ synopsis:       Extras for hasbolt library
 description:    Extras for hasbolt library
 homepage:       https://github.com/biocad/hasbolt-extras#readme
 bug-reports:    https://github.com/biocad/hasbolt-extras/issues
-author:         Bogdan Neterebskii, Vladimir Morozov
+author:         Bogdan Neterebskii, Vladimir Morozov, Sofya Kochkova
 maintainer:     bog2dan1@gmail.com
 copyright:      (c) 2018, BIOCAD
 stability:      experimental
@@ -34,6 +34,8 @@ library
                   , Database.Bolt.Extras.Query.Entity
                   , Database.Bolt.Extras.Query.Queries
                   , Database.Bolt.Extras.Query.Cypher
+                  , Database.Bolt.Extras.Query.Selectors
+                  , Database.Bolt.Extras.Query.BoltGraph
   build-depends:    base >=4.7 && <5
                   , text
                   , hasbolt
