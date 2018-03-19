@@ -12,7 +12,7 @@ import qualified Data.Map.Strict                     as M (Map, adjust, assocs,
                                                            keys, map, mapKeys,
                                                            mapWithKey, toList,
                                                            (!))
-import qualified Data.Text                           as T (Text, pack)
+import qualified Data.Text                           as T (Text, pack, empty)
 import           Database.Bolt
 import           Database.Bolt.Extras.Query
 import           Database.Bolt.Extras.Template       (makeNodeLike,
@@ -22,6 +22,8 @@ import           Database.Bolt.Extras.Utils
 import           Database.Bolt.Id                    (BoltId (..),
                                                       GetBoltId (..), fromInt)
 import           Text.Printf                         (printf)
+import           Database.Bolt.Extras.Template.Types
+import           Database.Bolt.Extras.Template.Instances
 
 
 -- | this function just run prepared query and return answer
@@ -33,7 +35,7 @@ runQ action = do
     pure result
   where
     boltCfg = def { user     = "neo4j"     -- database login, neo4h by default
-                  , password = "1"   -- password for database
+                  , password = "123"   -- password for database
                   , host     = "localhost" -- host with database
                   , port     = 7687        -- standart port
                   }
@@ -60,8 +62,33 @@ makeU Relationship{..} = URelationship relIdentity relType relProps
 
 runWithoutClass :: IO ()
 runWithoutClass = do
-  let f = Create (toNode $ Smth 1)
-  let s = Create (toNode $ Smth 2)
+  {-let sel1 = NodeSelector Nothing (Just ["VariableDomainScoring"]) (Just [("chainType", (toValue (T.pack "K")))])
+  let sel2 = URelSelector (Just "SCORING_RANGE_OF") Nothing
+  let sel3 = NodeSelector Nothing (Just ["Sequence"]) Nothing
+  let sel4 = NodeSelector Nothing (Just ["Structure"]) Nothing
+  let sel5 = URelSelector (Just "INCLUDE_STRUCTURE") Nothing
+  let graphSel = Graph (fromList [("f", sel1), ("s", sel3), ("t", sel4)])
+                       (fromList [(("f", "s"), sel2), (("s", "t"), sel5)])
+  result <- runQ $ (getGraph ["s0t.end = f0s.sEnd", "s0t.start = f0s.sStart"] graphSel)
+  print (map (length . _vertices) result)
+  --print result
+  -}
+  let t = Create (toNode $ DoubleSmth 1)
+  let e = Create (toNode $ DoubleSmth 2)
+
+  let r1 = toURelation $ THIS_IS_RELATION 20
+  let f = NodeSelector Nothing (Just ["Smth"]) (Just [("someInt", (I 1))])
+  let s = NodeSelector Nothing (Just ["Smth"]) (Just [("someInt", (I 2))])
+  let r = URelSelector (Just "THIS_IS_RELATION") Nothing
+  --modify $ addNode "f" f
+  --modify $ addNode "s" s
+  --modify $ addRelation "f" "s" r
+  let nodes = fromList [("f", t), ("s", e)]
+  let rels = fromList [(("f", "s"), r1)]
+  let graph = Graph nodes rels
+  result <- runQ $ createGraph graph
+  putStrLn $ show result
+ {- 
   let t = Create (toNode $ DoubleSmth 1)
   let e = Create (toNode $ DoubleSmth 2)
 
@@ -75,7 +102,7 @@ runWithoutClass = do
   putStrLn $ show result
 
 
-  let smth1Id = (_vertices result) M.! (T.pack "f")
+  let smth1Id = (_vertices result) M.! "f"
   let smth2Id = (_vertices result) M.! "s"
   let dsmth1Id = (_vertices result) M.! "t"
   let dsmth2Id = (_vertices result) M.! "e"
@@ -116,6 +143,7 @@ runWithoutClass = do
   putStrLn $ show bb
   putStrLn $ show cc
   putStrLn $ show dd
+-}
 --
   --let rels = [(0, 1), (1, 2), (0, 2), (1, 3)]
   --let graph = BoltGraphU [f, s, t, e] [r1, r2, r2, r3] rels

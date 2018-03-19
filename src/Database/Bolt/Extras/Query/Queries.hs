@@ -16,7 +16,7 @@ module Database.Bolt.Extras.Query.Queries
 import           Control.Monad                        (forM)
 import           Control.Monad.IO.Class               (MonadIO)
 import           Data.Map.Strict                      (toList, (!))
-import qualified Data.Text                            as T (Text, pack)
+import qualified Data.Text                            as T (Text, pack, concat)
 import           Database.Bolt                        (BoltActionT, Node (..),
                                                        Record, RecordValue (..),
                                                        Relationship (..),
@@ -99,7 +99,8 @@ getNodes NodeSelector{..} = query getQ >>= exactNodes
     getQ = do
       let idQuard = maybe "" (T.pack . printf " WHERE ID(%s)=%d " varQ . boltId) boltIdQ
       let labelQuard = maybe "" toCypher labelsS
-      [text|MATCH ($varQ $labelQuard) $idQuard
+      let propsQ = maybe "" (\props -> T.concat ["{", toCypher props, "}"]) propsS
+      [text|MATCH ($varQ $labelQuard $propsQ) $idQuard
             RETURN $varQ|]
 
     exactNodes :: (MonadIO m) => [Record] -> BoltActionT m [Node]
@@ -119,9 +120,10 @@ getRelationships RelSelector{..} = query getQ >>= exactRelationships
       let idEnd = maybe "" (T.pack . printf (if idStart == "" then " WHERE ID(b)=%d "
                                                             else " AND ID(b)=%d ") . boltId) endNodeBoltId
       let typeR = maybe "" toCypher typeS
+      let propsQ = maybe "" toCypher propsRS
       [text|MATCH (a), (b)
             $idStart $idEnd
-            MATCH (a)-[$varQ $typeR]->(b)
+            MATCH (a)-[$varQ $typeR {$propsQ}]->(b)
             RETURN $varQ|]
 
     exactRelationships :: (MonadIO m) => [Record] -> BoltActionT m [Relationship]

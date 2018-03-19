@@ -22,7 +22,7 @@ import           Control.Monad.IO.Class               (MonadIO)
 import           Data.Map.Strict                      (Map, notMember, toList, (!), insert, mapWithKey, keys)
 import qualified Data.Map.Strict                      as M (map)
 import qualified Data.Text                            as T (Text, concat,
-                                                            intercalate, pack)
+                                                            intercalate, pack, unpack, empty)
 import           Database.Bolt                        (BoltActionT, Node (..),
                                                        Record, RecordValue (..),
                                                        Relationship (..),
@@ -69,13 +69,19 @@ type QueryGraphSelector = Graph NodeName NodeSelector URelSelector
 
 -- | For the given QueryGraphSelector find the graph, which matches it.
 -- This function creates single cypher query and performs it.
-getGraph :: (MonadIO m) => QueryGraphSelector -> BoltActionT m ReturnedGraph
-getGraph queryGraph = do
-  res <- query getQ
-  let nodes = sequenceA $ mapWithKey (\key _ -> fmap head (exactValues key res)) vertices'
-  let edges = sequenceA $ mapWithKey (\key _ -> fmap (makeU . head) (exactValues
+getGraph :: (MonadIO m) => [T.Text] -> QueryGraphSelector -> BoltActionT m [ReturnedGraph]
+getGraph customConds queryGraph = do
+  res <- trace (T.unpack getQ) $ query getQ
+  --let temp = exactValues nodeVars res
+  --let nodesL = fmap (\node -> sequenceA $ mapWithKey (\key _ -> node)) (exactValues nodeVars res)
+  traverse (\i -> do
+            let nodes = sequenceA $ mapWithKey (\key _ -> fmap (!! i) (exactValues key res)) vertices'
+            let edges = sequenceA $ mapWithKey (\key _ -> fmap (makeU . (!! i)) (exactValues
                                        (T.concat [fst key, "0", snd key]) res)) rels
-  liftA2 Graph nodes edges
+            liftA2 Graph nodes edges) [0..(length res) - 1]
+  --let edgesL = fmap (\rel -> sequenceA $ mapWithKey (\key _ -> rel)) (exactValues
+  --                                     edgesVars res)
+  --trace (show nodesL) $ return []
   where
 
     vertices' :: Map NodeName NodeSelector
@@ -101,36 +107,46 @@ getGraph queryGraph = do
     getQ = do
       let nodes = T.intercalate "," $ map (\(k, v) -> do
                                             let labels = maybe "" toCypher (labelsS v)
-                                            [text|($k $labels)|]) (toList vertices')
+                                            let propsQ = maybe "" (\props -> T.concat ["{", toCypher props, "}"]) (propsS v)
+                                            [text|($k $labels $propsQ)|]) (toList vertices')
       let returnNodes = T.intercalate "," nodeVars
-      let conditions = (T.intercalate " AND " . filter (/= "\n")) $ map (\(k, v) -> do
+      let conditionsId = T.intercalate " AND " . filter (/= "\n") $ map (\(k, v) -> do
                                     let name = k
                                     let boltIdQR = maybe ""
                                                    (T.pack . printf "ID(%s)=%d" name . boltId)
                                                    (boltIdQ v)
                                     [text|$boltIdQR|]) (toList vertices')
+      let customConditions = T.intercalate " AND " customConds
+      let conditions = T.intercalate " AND " . filter (/= T.empty) $ [conditionsId, customConditions]
+      let conditionsQ = if conditions == T.empty then "" else T.concat ["WHERE ", conditions]
       let edges = T.intercalate "," $ map (\(k, v) -> do
                                             let name   = T.concat [fst k, "0", snd k]
                                             --let rs     = listSelector !! i
                                             let typeQ  = maybe "" toCypher (typeLS v)
-                                            let stNode = fst k
-                                            let stNodeLabels = maybe "" toCypher $ labelsS (vertices' ! stNode)
-                                            let endNode = snd k
-                                            let endNodeLabels = maybe "" toCypher $ labelsS (vertices' ! endNode)
-                                            [text|($stNode $stNodeLabels)-[$name $typeQ]-($endNode $endNodeLabels)|])
+                                            let stNodeName = fst k
+                                            let stNode = vertices' ! stNodeName
+                                            let stNodeLabels = maybe "" toCypher $ labelsS stNode
+                                            let stNodeProps = maybe "" (\props -> T.concat ["{", toCypher props, "}"]) (propsS stNode)
+                                            let endNodeName = snd k
+                                            let endNode = vertices' ! endNodeName
+                                            let endNodeLabels = maybe "" toCypher $ labelsS endNode
+                                            let endNodeProps = maybe "" (\props -> T.concat ["{", toCypher props, "}"]) (propsS endNode)
+                                            let propsQ = maybe "" (\props -> T.concat ["{", toCypher props, "}"]) (propsLS v)
+                                            [text|($stNodeName $stNodeLabels $stNodeProps)-[$name $typeQ $propsQ]-($endNodeName $endNodeLabels $endNodeProps)|])
                                           (toList rels)
 
       let returnEdges = T.intercalate "," edgesVars
 
-      [text|MATCH $nodes
-            WHERE $conditions
-            MATCH $edges
+      [text|MATCH $nodes, $edges
+            $conditionsQ
             RETURN $returnNodes, $returnEdges|]
 
 
 
     exactValues :: (MonadIO m, RecordValue a) => T.Text -> [Record] -> BoltActionT m [a]
     exactValues var = mapM (exact . (! var))
+    --exactValues :: (MonadIO m, RecordValue a) => [T.Text] -> [Record] -> BoltActionT m [[a]]
+    --exactValues vars recs = mapM (\var -> mapM (exact . (! var)) recs) vars
 
 -- | Create Graph using given GraphU and the list describing 'Node's indices (from the given _vertices),
 -- which should be connected by the corresponding 'Relationship'.

@@ -4,14 +4,15 @@ module Database.Bolt.Extras.Query.Selectors
     , URelSelector (..)
     ) where
 
-import qualified Data.Text        as T (Text)
 import           Database.Bolt.Id (BoltId (..))
+import           Database.Bolt.Extras.Template.Types (Label, Property)
 
 -- | Helper to find 'Node's.
 -- _varQNName is the mark for this Node, which will be used in Cypher queries.
 -- For example "MATCH(a)", here _varQNName = "a"
 data NodeSelector = NodeSelector { boltIdQ :: Maybe BoltId
-                                 , labelsS :: Maybe [T.Text]
+                                 , labelsS :: Maybe [Label]
+                                 , propsS  :: Maybe [Property]
                                  } deriving (Show)
 
 -- | Helper to find 'Relationship's.
@@ -20,8 +21,11 @@ data NodeSelector = NodeSelector { boltIdQ :: Maybe BoltId
 -- RelSelector is used for searching using BoltId-s of 'Node's, connected by this Relationship.
 data RelSelector = RelSelector { startNodeBoltId :: Maybe BoltId
                                , endNodeBoltId   :: Maybe BoltId
-                               , typeS           :: Maybe T.Text
+                               , typeS           :: Maybe Label
+                               , propsRS         :: Maybe [Property]
                                } deriving (Show)
 
 -- | URelSelector is used for searching using indexes of 'Node's in the given graph.
-data URelSelector = URelSelector { typeLS :: Maybe T.Text } deriving (Show)
+data URelSelector = URelSelector { typeLS  :: Maybe Label
+                                 , propsLS :: Maybe [Property]
+                                 } deriving (Show)
