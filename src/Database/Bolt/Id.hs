@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric   #-}
+{-# LANGUAGE DeriveFunctor   #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Database.Bolt.Id
@@ -12,7 +13,6 @@ import           Data.Aeson                 (FromJSON (..), ToJSON (..))
 import           Database.Bolt              (Node (..), Relationship (..),
                                              URelationship (..))
 import           Database.Bolt.Extras.Utils (currentLoc)
-import           Debug.Trace
 import           GHC.Generics               (Generic (..))
 
 -- | 'BoltId' is wrapper for Bolt 'Node', 'Relationship' and 'URelationship' identities.
@@ -25,7 +25,7 @@ instance FromJSON BoltId
 
 fromInt :: Int -> BoltId
 fromInt i | i >= 0    = BoltId i
-          | otherwise = trace (show i) $ error $ $currentLoc ++ "could not create BoltId with identity less then zero."
+          | otherwise = error $ $currentLoc ++ "could not create BoltId with identity less then zero."
 
 class GetBoltId a where
   getBoltId :: a -> BoltId
@@ -38,3 +38,8 @@ instance GetBoltId Relationship where
 
 instance GetBoltId URelationship where
   getBoltId = fromInt . urelIdentity
+
+data Persisted a = Persisted { objectId    :: BoltId
+                             , objectValue :: a
+                             } deriving (Show, Functor, Eq, Ord, Read, Generic)
+
