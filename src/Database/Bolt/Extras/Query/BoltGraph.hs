@@ -112,11 +112,11 @@ getGraph customConds queryGraph = do
 
     getQ :: T.Text
     getQ = do
-      let nodes = T.intercalate "," $ map (\(k, v) -> do
+      let nodes = map (\(k, v) -> do
                                             let labels = maybe "" toCypher (labelsS v)
                                             let propsQ = maybe "" (\props -> T.concat ["{", toCypher props, "}"]) (propsS v)
                                             [text|($k $labels $propsQ)|]) (toList vertices')
-      let returnNodes = T.intercalate "," nodeVars
+      let returnNodes = nodeVars
       let conditionsId = T.intercalate " AND " . filter (/= "\n") $ map (\(k, v) -> do
                                     let name = k
                                     let boltIdQR = maybe ""
@@ -126,7 +126,7 @@ getGraph customConds queryGraph = do
       let customConditions = T.intercalate " AND " customConds
       let conditions = T.intercalate " AND " . filter (/= T.empty) $ [conditionsId, customConditions]
       let conditionsQ = if conditions == T.empty then "" else T.concat ["WHERE ", conditions]
-      let edges = T.intercalate "," $ map (\(k, v) -> do
+      let edges = map (\(k, v) -> do
                                             let name   = T.concat [fst k, "0", snd k]
                                             --let rs     = listSelector !! i
                                             let typeQ  = maybe "" toCypher (typeLS v)
@@ -142,11 +142,13 @@ getGraph customConds queryGraph = do
                                             [text|($stNodeName $stNodeLabels $stNodeProps)-[$name $typeQ $propsQ]-($endNodeName $endNodeLabels $endNodeProps)|])
                                           (toList rels)
 
-      let returnEdges = T.intercalate "," edgesVars
+      let returnEdges = edgesVars
+      let completeRequest = T.intercalate "," $ nodes ++ edges
+      let completeResponse = T.intercalate "," $ returnNodes ++ returnEdges
 
-      [text|MATCH $nodes, $edges
+      [text|MATCH $completeRequest
             $conditionsQ
-            RETURN $returnNodes, $returnEdges|]
+            RETURN $completeResponse|]
 
 
 
