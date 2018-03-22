@@ -5,24 +5,28 @@
 
 module Database.Bolt.Extras.Query.BoltGraph
     ( Graph (..)
+    , NodeName
     , QueryGraph
     , ResponseGraph
-    , getGraph
-    , createGraph
-    , vertices
-    , relations
     , addNode
     , addRelation
-    , NodeName
+    , createGraph
+    , emptyGraph
+    , getGraph
+    , relations
+    , vertices
     ) where
 
 import           Control.Applicative                  (liftA2)
 import           Control.Lens                         (makeLenses, over)
 import           Control.Monad.IO.Class               (MonadIO)
-import           Data.Map.Strict                      (Map, notMember, toList, (!), insert, mapWithKey, keys)
+import           Data.Map.Strict                      (Map, insert, keys,
+                                                       mapWithKey, notMember,
+                                                       toList, (!))
 import qualified Data.Map.Strict                      as M (map)
-import qualified Data.Text                            as T (Text, concat,
-                                                            intercalate, pack, unpack, empty)
+import qualified Data.Text                            as T (Text, concat, empty,
+                                                            intercalate, pack,
+                                                            unpack)
 import           Database.Bolt                        (BoltActionT, Node (..),
                                                        Record, RecordValue (..),
                                                        Relationship (..),
@@ -45,6 +49,9 @@ data Graph n a b = Graph { _vertices  :: Map n a
                          } deriving (Show)
 
 makeLenses ''Graph
+
+emptyGraph :: Ord n => Graph n a b
+emptyGraph = Graph mempty mempty
 
 addNode :: Ord n => n -> a -> Graph n a b -> Graph n a b
 addNode name node graph = if name `notMember` (_vertices graph)
