@@ -1,10 +1,11 @@
-{-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE DeriveFunctor   #-}
+{-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Database.Bolt.Id
   ( BoltId (boltId)
   , GetBoltId (..)
+  , Persisted (..)
   , fromInt
   ) where
 
