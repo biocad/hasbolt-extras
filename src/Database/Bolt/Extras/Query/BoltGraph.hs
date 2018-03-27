@@ -7,7 +7,9 @@ module Database.Bolt.Extras.Query.BoltGraph
     ( Graph (..)
     , NodeName
     , QueryGraph
+    , ReturnedGraph
     , ResponseGraph
+    , QueryGraphSelector
     , addNode
     , addRelation
     , createGraph
