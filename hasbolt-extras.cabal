@@ -5,7 +5,7 @@ description:    Extras for hasbolt library
 homepage:       https://github.com/biocad/hasbolt-extras#readme
 bug-reports:    https://github.com/biocad/hasbolt-extras/issues
 author:         Bogdan Neterebskii, Vladimir Morozov, Sofya Kochkova, Alexander Sadovnikov
-maintainer:     neterebskii@gmail.com
+maintainer:     neterebskiy@biocad.ru
 copyright:      (c) 2018, BIOCAD
 stability:      experimental
 category:       Database
