@@ -30,25 +30,29 @@ import           NeatInterpolation                   (text)
 import           Text.Printf                         (printf)
 
 -- | Helper to find 'Node's.
--- _varQNName is the mark for this Node, which will be used in Cypher queries.
--- For example "MATCH(a)", here _varQNName = "a"
+--
 data NodeGetter = NodeGetter { boltIdN :: Maybe BoltId
                              , labelsN :: Maybe [Label]
                              , propsN  :: Maybe [Property]
                              } deriving (Show)
 
--- | RelGetter is used for searching using indexes of 'Node's in the given graph.
+-- | Helper to find 'URelationship's.
+--
 data RelGetter = RelGetter { labelR :: Maybe Label
                            , propsR :: Maybe [Property]
                            } deriving (Show)
 
--- | The combinations of Getters to load graph from the database.
+-- | The combinations of 'Getter's to load graph from the database.
+--
 type GraphGetRequest = Graph NodeName NodeGetter RelGetter
 
+-- | The graph of 'Node's and 'URelationship's which we got from the database using 'GraphGetRequest'.
+--
 type GraphGetResponse = Graph NodeName Node URelationship
 
--- | For the given GraphGetRequest find the graph, which matches it.
+-- | For the given 'GraphGetRequest' find all graphs, which match it.
 -- This function creates single cypher query and performs it.
+--
 getGraph :: (MonadIO m) => [T.Text] -> GraphGetRequest -> BoltActionT m [GraphGetResponse]
 getGraph customConds requestGraph = do
   response <- query (formQuery customConds nodeVars edgesVars vertices rels)
@@ -81,6 +85,9 @@ getGraph customConds requestGraph = do
     mapOnlyKey :: (k -> b) -> Map k a -> Map k b
     mapOnlyKey f = mapWithKey (\k _ -> f k)
 
+
+-- | This function creates cypher query, which is used for getting graph from the database.
+--
 formQuery :: [T.Text] -> [T.Text] -> [T.Text] -> Map NodeName NodeGetter -> Map (NodeName, NodeName) RelGetter -> T.Text
 formQuery customConds returnNodes returnEdges vertices rels =
   [text|MATCH $completeRequest

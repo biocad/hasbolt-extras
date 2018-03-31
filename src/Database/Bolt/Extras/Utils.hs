@@ -14,17 +14,20 @@ import           Text.Printf         (printf)
 
 -- | 'dummyId' is used to load 'Node' and 'URelationship' into database,
 -- because id from database is not known for such moment.
+--
 dummyId :: Int
 dummyId = -1
 
 -- | 'Node's can be merged. 'union' is useful when you have to store in one node
 -- several labels and props from different classes.
+--
 union :: Node -> Node -> Node
 (Node _ labels1 props1) `union` (Node _ labels2 props2) = Node dummyId
                                                                (nub $ labels1 ++ labels2)
                                                                (props1 `M.union` props2)
 
 -- | 'currentLoc' shows module name and line where this expression is used.
+--
 currentLoc :: Q Exp
 currentLoc = do
   loc <- location
