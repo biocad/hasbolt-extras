@@ -16,7 +16,7 @@ import           Data.Map.Strict                   (mapWithKey, toList, (!))
 import qualified Data.Map.Strict                   as M (map)
 import qualified Data.Text                         as T (Text, pack)
 import           Database.Bolt                     (BoltActionT, Node (..),
-                                                    RecordValue (..),
+                                                    RecordValue (..), Value (..),
                                                     URelationship (..), at,
                                                     exact, query)
 import           Database.Bolt.Extras.Graph        (Graph (..))
@@ -58,7 +58,7 @@ putNode ut = case ut of
       let varQ  = "n"
 
       let labelsQ = toCypher $ labels node
-      let propsQ  = toCypher . toList $ nodeProps node
+      let propsQ  = toCypher . filter ((/= N ()) . snd) . toList $ nodeProps node
 
       let getQuery = [text|$q ($varQ $labelsQ {$propsQ})
                            RETURN ID($varQ) as $varQ|]
