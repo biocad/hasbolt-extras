@@ -8,7 +8,9 @@ module Database.Bolt.Extras.Template.Converters
   ) where
 
 import           Control.Lens                        (view, _1)
-import           Data.Map.Strict                     (fromList, member, (!))
+import           Control.Monad                       ((>=>))
+import           Data.Map.Strict                     (fromList, member,
+                                                      notMember, (!))
 import           Data.Text                           (Text, pack, unpack)
 import           Database.Bolt.Extras.Template.Types (FromValue (..),
                                                       Labels (..), Node (..),
@@ -16,10 +18,12 @@ import           Database.Bolt.Extras.Template.Types (FromValue (..),
                                                       Properties (..),
                                                       ToValue (..),
                                                       URelationLike (..),
-                                                      URelationship (..))
+                                                      URelationship (..),
+                                                      Value (..))
 import           Database.Bolt.Extras.Utils          (currentLoc, dummyId)
 import           Instances.TH.Lift                   ()
 import           Language.Haskell.TH
+import           Language.Haskell.TH.Syntax
 
 -- | Describes a @bijective@ class, i.e. class that has two functions: @phi :: a -> SomeType@ and @phiInv :: SomeType -> a@.
 -- Requires class name, @SomeType@ name and names of the class functions (@phi@ and @phiInv@).
@@ -216,9 +220,22 @@ makeToClause label dataCons varName dataFields | null dataFields = pure $ Clause
 --
 makeFromClause :: String -> Name -> Name -> [Name] -> Q Clause
 makeFromClause label conName varName dataFields = do
+
+  -- Obtain all data field types.
+  -- 'reify' returns 'Q Info', and we are interested in its 'VarI' constructur which provides information about variable: name and type.
+  -- To obtain field type, one should get the second field record of VarI.
+  fieldTypes <- mapM (reify >=> extractVarType) dataFields
+
+  -- Contains 'True' in each position where 'Maybe a' type occured and 'False' everywhere else.
+  let maybeFields = fmap isMaybe fieldTypes
+
   -- fieldNames :: [Text]
   -- field records of the target type.
   let fieldNames = fmap (pack . nameBase) dataFields
+
+  -- maybeLabels :: [(Text, Bool)]
+  -- field records of the target type and 'isMaybe' check results.
+  let maybeNames = zip fieldNames maybeFields
 
   -- dataLabel :: Text
   -- Label a.k.a type name
@@ -229,12 +246,16 @@ makeFromClause label conName varName dataFields = do
   -- Therefore, fieldNamesE :: [Exp]
   fieldNamesE <- mapM (\x -> [|x|]) fieldNames
 
+  -- maybeNamesE :: [Exp]
+  -- Contains Exp representation of (Text, Bool) – field name and isMaybe check result on it.
+  let maybeNamesE = zipWith (\n m -> TupE [n, ConE $ if m then trueName else falseName]) fieldNamesE maybeFields
+
   -- varExp :: Q Exp
   -- Pattern match variable packed in Exp. It will be used in QuasiQuotation below.
   let varExp = pure (VarE varName)
 
   -- Guard checks that all necessary fields are present in the container.
-  guardSuccess <- NormalG <$> [|checkLabels $(varExp) [dataLabel] && checkProps $(varExp) fieldNames|]
+  guardSuccess <- NormalG <$> [|checkLabels $(varExp) [dataLabel] && checkProps $(varExp) maybeNames|]
 
   -- `otherwise` case.
   guardFail <- NormalG <$> [|otherwise|]
@@ -246,24 +267,35 @@ makeFromClause label conName varName dataFields = do
   -- fromNode :: Node -> a
   -- fromNode varName | checkLabels varName [dataLabel] && checkProps varName fieldNames = ConName { foo = bar, baz = quux ...}
   --                  | otherwise = unpackError varName (unpack dataLabel)
-  let successExp = RecConE conName (zipWith (\f d -> (d, AppE (AppE (VarE 'getProp) (VarE varName)) f)) fieldNamesE dataFields)
+  let successExp = RecConE conName (zipWith (\f fldName -> (fldName, AppE (AppE (VarE 'getProp) (VarE varName)) f)) maybeNamesE dataFields)
   let successCase = (guardSuccess, successExp)
   let failCase = (guardFail, failExp)
 
   pure $ Clause [VarP varName] (GuardedB [successCase, failCase]) []
 
 
+extractVarType :: Info -> Q Type
+extractVarType (VarI _ fieldType _) = pure fieldType
+extractVarType _                    = error ($currentLoc ++ "this can not happen.")
+
+-- | Check whether given type is '_ -> Maybe _'
+-- It pattern matches arrow type applied to any argument ant 'T _' and checks if T is ''Maybe
+isMaybe :: Type -> Bool
+isMaybe (AppT (AppT ArrowT _) (AppT (ConT t) _)) = t == ''Maybe
+isMaybe _                                        = False
+
 strToTextE :: String -> Exp
 strToTextE str = AppE (VarE 'pack) (LitE . StringL $ str)
 
-checkProps :: Properties t => t -> [Text] -> Bool
-checkProps container = all (`member` getProps container)
+checkProps :: Properties t => t -> [(Text, Bool)] -> Bool
+checkProps container = all (\(fieldName, fieldMaybe) -> fieldMaybe || fieldName `member` getProps container)
 
 checkLabels :: Labels t => t -> [Text] -> Bool
 checkLabels container = all (`elem` getLabels container)
 
-getProp :: (Properties t, FromValue a) => t -> Text -> a
-getProp container field = fromValue (getProps container ! field)
+getProp :: (Properties t, FromValue a) => t -> (Text, Bool) -> a
+getProp container (fieldName, fieldMaybe) | fieldMaybe && fieldName `notMember` getProps container = fromValue $ N ()
+                                          | otherwise = fromValue (getProps container ! fieldName)
 
 unpackError :: Show c => c -> String -> a
 unpackError container label = error $ $currentLoc ++ " could not unpack " ++ label ++ " from " ++ show container
