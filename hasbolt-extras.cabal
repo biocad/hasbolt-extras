@@ -1,5 +1,5 @@
 name:           hasbolt-extras
-version:        0.0.0.4
+version:        0.0.0.5
 synopsis:       Extras for hasbolt library
 description:    Extras for hasbolt library
 homepage:       https://github.com/biocad/hasbolt-extras#readme
@@ -24,6 +24,7 @@ source-repository head
 library
   hs-source-dirs:      src
   exposed-modules:     Database.Bolt.Extras
+                     , Database.Bolt.Extras.Condition
                      , Database.Bolt.Extras.Graph
                      , Database.Bolt.Extras.Persisted
                      , Database.Bolt.Extras.Query
