@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.6] - 2018-04-20
+### Added
+- Added ability to update properties of the existing node; added ability to choose
+if you want to `CREATE` or `MERGE` the relationship.
+
 ## [0.0.0.4] - 2018-04-05
 ### Changed
 - More accurate `toNode` on data fields with `Maybe a` type. If the corresponding field in the type is Nothing, this field won't be included to `Node`.

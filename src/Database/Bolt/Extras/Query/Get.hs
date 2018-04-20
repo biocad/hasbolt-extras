@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RecordWildCards   #-}
-{-# LANGUAGE TemplateHaskell   #-}
 
 module Database.Bolt.Extras.Query.Get
     ( NodeGetter (..)
@@ -9,6 +8,8 @@ module Database.Bolt.Extras.Query.Get
     , GraphGetResponse
     , RelGetter (..)
     , getGraph
+    , nodeAsText
+    , condIdAsText
     ) where
 
 import           Control.Monad.IO.Class              (MonadIO)
