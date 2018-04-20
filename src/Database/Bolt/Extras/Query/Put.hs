@@ -1,12 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RecordWildCards   #-}
-{-# LANGUAGE TemplateHaskell   #-}
 
 module Database.Bolt.Extras.Query.Put
     ( GraphPutRequest
     , GraphPutResponse
     , PutNode (..)
+    , PutRelationship (..)
     , putGraph
     ) where
 
@@ -16,9 +16,10 @@ import           Data.Map.Strict                   (mapWithKey, toList, (!))
 import qualified Data.Map.Strict                   as M (map)
 import qualified Data.Text                         as T (Text, pack)
 import           Database.Bolt                     (BoltActionT, Node (..),
-                                                    RecordValue (..), Value (..),
-                                                    URelationship (..), at,
-                                                    exact, query)
+                                                    RecordValue (..),
+                                                    URelationship (..),
+                                                    Value (..), at, exact,
+                                                    query)
 import           Database.Bolt.Extras.Graph        (Graph (..))
 import           Database.Bolt.Extras.Persisted    (BoltId, fromInt)
 import           Database.Bolt.Extras.Query.Cypher (ToCypher (..))
@@ -27,12 +28,17 @@ import           NeatInterpolation                 (text)
 
 -- | 'PutNode' is the wrapper for 'Node' where we can specify if we want to merge or create it.
 --
-data PutNode = BoltId BoltId | Merge Node | Create Node
+data PutNode = BoltId BoltId | MergeN Node | CreateN Node
+  deriving (Show)
+
+-- | 'PutRelationship' is the wrapper for 'Relationship' where we can specify if we want to merge or create it.
+--
+data PutRelationship = MergeR URelationship | CreateR URelationship
   deriving (Show)
 
 -- | The graph of 'Node's with specified uploading type and 'URelationship's.
 --
-type GraphPutRequest = Graph NodeName PutNode URelationship
+type GraphPutRequest = Graph NodeName PutNode PutRelationship
 
 -- | The graph of 'BoltId's corresponding to the nodes and relationships
 -- which we get after putting 'GraphPutRequest'.
@@ -49,9 +55,9 @@ type GraphPutResponse = Graph NodeName BoltId BoltId
 --
 putNode :: (MonadIO m) => PutNode -> BoltActionT m [BoltId]
 putNode ut = case ut of
-    (BoltId bId)  -> pure [bId]
-    (Merge node)  -> helper (T.pack "MERGE") node
-    (Create node) -> helper (T.pack "CREATE") node
+    (BoltId bId)   -> pure [bId]
+    (MergeN node)  -> helper (T.pack "MERGE") node
+    (CreateN node) -> helper (T.pack "CREATE") node
   where
     helper :: (MonadIO m) => T.Text -> Node -> BoltActionT m [BoltId]
     helper q node = do
@@ -72,23 +78,28 @@ putNode ut = case ut of
 -- For given starting and ending 'Node's 'BoltId's, and for @URelationship  _ urelType urelProps@
 -- this method makes MERGE query and then returns the corresponding 'BoltId'.
 --
-putRelationship :: (MonadIO m) => BoltId -> URelationship -> BoltId -> BoltActionT m BoltId
-putRelationship start URelationship{..} end = do
-  [record]      <- query mergeQ
-  urelIdentity' <- record `at` varQ >>= exact
-  pure $ fromInt urelIdentity'
+putRelationship :: (MonadIO m) => BoltId -> PutRelationship -> BoltId -> BoltActionT m BoltId
+putRelationship start pr end = case pr of
+    (MergeR relationship)  -> helper (T.pack "MERGE") relationship
+    (CreateR relationship) -> helper (T.pack "CREATE") relationship
   where
-    varQ = "r"
-    labelQ = toCypher urelType
-    propsQ = toCypher . toList $ urelProps
-    startT = T.pack . show $ start
-    endT = T.pack . show $ end
+    helper :: (MonadIO m) => T.Text -> URelationship -> BoltActionT m BoltId
+    helper q URelationship{..} = do
+        [record]      <- query putQuery
+        urelIdentity' <- record `at` varQ >>= exact
+        pure $ fromInt urelIdentity'
+      where
+        varQ = "r"
+        labelQ = toCypher urelType
+        propsQ = toCypher . toList $ urelProps
+        startT = T.pack . show $ start
+        endT = T.pack . show $ end
 
-    mergeQ :: T.Text
-    mergeQ = [text|MATCH (a), (b)
-              WHERE ID(a) = $startT AND ID(b) = $endT
-              MERGE (a)-[$varQ $labelQ {$propsQ}]->(b)
-              RETURN ID($varQ) as $varQ|]
+        putQuery :: T.Text
+        putQuery = [text|MATCH (a), (b)
+                         WHERE ID(a) = $startT AND ID(b) = $endT
+                         $q (a)-[$varQ $labelQ {$propsQ}]->(b)
+                         RETURN ID($varQ) as $varQ|]
 
 -- | Creates graph using given 'GraphPutRequest'.
 -- If there were multiple choices while merging given _vertices, the first match is used for connection.

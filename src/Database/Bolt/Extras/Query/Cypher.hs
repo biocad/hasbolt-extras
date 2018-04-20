@@ -15,13 +15,12 @@ module Database.Bolt.Extras.Query.Cypher
 -- This file contains some converation rules from 'Database.Bolt' types to `Cypher`.
 -------------------------------------------------------------------------------------------------
 
-import           Data.Text                         as T (Text, concat, cons,
-                                                         intercalate, pack,
-                                                         toUpper)
-import           Database.Bolt                     (Value (..))
-import           Database.Bolt.Extras.Template     (Label, Property)
-import           Database.Bolt.Extras.Utils        (currentLoc)
-import           NeatInterpolation                 (text)
+import           Data.Text                     as T (Text, concat, cons,
+                                                     intercalate, pack, toUpper)
+import           Database.Bolt                 (Value (..))
+import           Database.Bolt.Extras.Template (Label, Property)
+import           Database.Bolt.Extras.Utils    (currentLoc)
+import           NeatInterpolation             (text)
 
 -- | The class for convertation into Cypher.
 --
