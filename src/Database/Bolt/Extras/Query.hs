@@ -12,6 +12,7 @@ module Database.Bolt.Extras.Query
   , getGraph
   , putGraph
   , setNode
+  , deleteNodes
   ) where
 
 import           Database.Bolt.Extras.Query.Cypher (ToCypher (..))
@@ -25,4 +26,5 @@ import           Database.Bolt.Extras.Query.Put    (GraphPutRequest,
                                                     PutRelationship (..),
                                                     putGraph)
 import           Database.Bolt.Extras.Query.Set    (setNode)
+import           Database.Bolt.Extras.Query.Delete (deleteNodes)
 import           Database.Bolt.Extras.Query.Utils  (NodeName)

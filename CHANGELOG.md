@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.7] - 2018-04-23
+### Added
+- Added ability to delete nodes by their `BoltId`s.
+
 ## [0.0.0.6] - 2018-04-20
 ### Added
 - Added ability to update properties of the existing node; added ability to choose
