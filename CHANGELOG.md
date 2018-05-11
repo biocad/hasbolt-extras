@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.8] - 2018-05-14
+### Added
+- Added `DSL` for `Cypher`.
+
 ## [0.0.0.7] - 2018-04-23
 ### Added
 - Added ability to delete nodes by their `BoltId`s.
