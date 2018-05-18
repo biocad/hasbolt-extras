@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE QuasiQuotes          #-}
 {-# LANGUAGE RecordWildCards      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -7,9 +8,13 @@
 module Database.Bolt.Extras.DSL.Internal.Instances () where
 
 import           Control.Monad.Writer                    (execWriter, tell)
-import           Data.Text                               (intercalate)
+import           Data.Monoid                             ((<>))
+import           Data.Text                               (intercalate, pack)
 import           Database.Bolt.Extras.DSL.Internal.Types
+import           Database.Bolt.Extras.Persisted          (fromInt)
 import           Database.Bolt.Extras.Query.Cypher       (ToCypher (..))
+import           NeatInterpolation                       (text)
+import           Text.Printf                             (printf)
 
 instance SelectorLike NodeSelector where
     withIdentifier idx node = node { nodeIdentifier = Just idx }
@@ -82,3 +87,15 @@ instance ToCypher Selector where
 
 instance ToCypher Selectors where
   toCypher = intercalate ", " . fmap toCypher
+
+instance ToCypher Cond where
+  toCypher (ID t bId)   = pack $ printf "ID(%s)=%d" t (fromInt bId)
+  toCypher (IDs t bIds) = pack $ printf "ID(%s) in [%s]" t (intercalate ", " $ fmap (pack . show) bIds)
+  toCypher (IN t txts)  = pack $ printf "ID(%s) in [%s]" t (intercalate ", " $ fmap (\s -> [text|"$s"|]) txts)
+  toCypher (TC txt)     = txt
+
+instance ToCypher Conds where
+  toCypher (fcp :&&: scp) = toCypher fcp <> " AND " <> toCypher scp
+  toCypher (fcp :||: scp) = toCypher fcp <> " OR " <> toCypher scp
+  toCypher (Not cp)       = "NOT " <> toCypher cp
+  toCypher (C cp)         = toCypher cp

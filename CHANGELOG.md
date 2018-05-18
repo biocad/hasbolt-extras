@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.9] - 2018-05-18
+### Added
+- New types for conditions in `DSL`.
+
 ## [0.0.0.8] - 2018-05-14
 ### Added
 - Added `DSL` for `Cypher`.
