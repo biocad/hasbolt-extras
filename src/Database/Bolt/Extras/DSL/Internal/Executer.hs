@@ -20,23 +20,23 @@ import           Database.Bolt.Extras.Query.Cypher           (ToCypher (..))
 -- | Translates 'Expr' to cypher query.
 --
 execute :: Expr a -> Writer [Text] a
-execute (Create s n)        = executeHelperS "CREATE " s n
-execute (Match s n)         = executeHelperS "MATCH " s n
-execute (OptionalMatch s n) = executeHelperS "OPTIONAL MATCH " s n
-execute (Merge s n)         = executeHelperS "MERGE " s n
-execute (Where c n)         = executeHelperT "WHERE " c n
+execute (Create s n)        = executeHelperC "CREATE " s n
+execute (Match s n)         = executeHelperC "MATCH " s n
+execute (OptionalMatch s n) = executeHelperC "OPTIONAL MATCH " s n
+execute (Merge s n)         = executeHelperC "MERGE " s n
+execute (Where c n)         = executeHelperC "WHERE " c n
 execute (Set t n)           = executeHelperT "SET " t n
 execute (Delete t n)        = executeHelperT "DELETE " t n
 execute (DetachDelete t n)  = executeHelperT "DETACH DELETE " t n
 execute (Return t n)        = executeHelperT "RETURN " t n
 execute (Text t n)          = tell [t] >> pure n
 
--- | Helper to translate 'Expr' with 'Selector's
+-- | Helper to translate 'Expr' with something, which can be translated to cypher.
 --
-executeHelperS :: ToCypher a => Text -> a -> b -> Writer [Text] b
-executeHelperS txt s n = tell [txt <> toCypher s] >> pure n
+executeHelperC :: ToCypher a => Text -> a -> b -> Writer [Text] b
+executeHelperC txt s n = tell [txt <> toCypher s] >> pure n
 
--- | Helper to translate 'Expr' with 'Text's
+-- | Helper to translate 'Expr' with 'Text's.
 --
 executeHelperT :: Text -> [Text] -> b -> Writer [Text] b
 executeHelperT txt t n = tell [txt <> intercalate ", " t] >> pure n

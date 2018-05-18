@@ -14,7 +14,7 @@ module Database.Bolt.Extras.DSL.Internal.Language
 
 import           Control.Monad.Free                      (Free (..), liftF)
 import           Data.Text                               (Text)
-import           Database.Bolt.Extras.DSL.Internal.Types (Cond, Expr (..),
+import           Database.Bolt.Extras.DSL.Internal.Types (Conds (..), Expr (..),
                                                           Selectors)
 
 -- | Prepare 'CREATE' query
@@ -39,8 +39,8 @@ mergeF sels = liftF (Merge sels ())
 
 -- | Prepare 'WHERE' query
 --
-whereF :: Cond -> Free Expr ()
-whereF cond = liftF (Where cond ())
+whereF :: Conds -> Free Expr ()
+whereF conds = liftF (Where conds ())
 
 -- | Prepare 'SET' query
 --
