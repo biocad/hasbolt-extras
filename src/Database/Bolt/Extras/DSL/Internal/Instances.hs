@@ -91,7 +91,7 @@ instance ToCypher Selectors where
 instance ToCypher Cond where
   toCypher (ID t bId)   = pack $ printf "ID(%s)=%d" t (fromInt bId)
   toCypher (IDs t bIds) = pack $ printf "ID(%s) in [%s]" t (intercalate ", " $ fmap (pack . show) bIds)
-  toCypher (IN t txts)  = pack $ printf "ID(%s) in [%s]" t (intercalate ", " $ fmap (\s -> [text|"$s"|]) txts)
+  toCypher (IN t txts)  = pack $ printf "%s in [%s]" t (intercalate ", " $ fmap (\s -> [text|"$s"|]) txts)
   toCypher (TC txt)     = txt
 
 instance ToCypher Conds where
