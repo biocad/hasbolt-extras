@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.10] - 2018-05-24
+### Changed
+- Fixed conditions.
+
 ## [0.0.0.9] - 2018-05-18
 ### Added
 - New types for conditions in `DSL`.
