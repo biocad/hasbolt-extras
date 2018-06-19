@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.11] - 2018-06-19
+### Changed
+- Cabal fix.
+
 ## [0.0.0.10] - 2018-05-24
 ### Changed
 - Fixed conditions.
