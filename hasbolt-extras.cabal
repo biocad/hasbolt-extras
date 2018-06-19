@@ -1,5 +1,5 @@
 name:           hasbolt-extras
-version:        0.0.0.10
+version:        0.0.0.11
 synopsis:       Extras for hasbolt library
 description:    Extras for hasbolt library
 homepage:       https://github.com/biocad/hasbolt-extras#readme
@@ -36,7 +36,7 @@ library
                      , Database.Bolt.Extras.Query.Set
                      , Database.Bolt.Extras.Query.Delete
                      , Database.Bolt.Extras.Query.Utils
-                       Database.Bolt.Extras.Query.Cypher
+                     , Database.Bolt.Extras.Query.Cypher
                   
                      , Database.Bolt.Extras.Template.Types
                      , Database.Bolt.Extras.Template.Instances
