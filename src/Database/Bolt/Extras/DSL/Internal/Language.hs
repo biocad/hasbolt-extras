@@ -8,6 +8,7 @@ module Database.Bolt.Extras.DSL.Internal.Language
   , setF
   , deleteF
   , detachDeleteF
+  , removeF
   , returnF
   , textF
   ) where
@@ -56,6 +57,11 @@ deleteF txts = liftF (Delete txts ())
 --
 detachDeleteF :: [Text] -> Free Expr ()
 detachDeleteF txts = liftF (DetachDelete txts ())
+
+-- | Prepare 'REMOVE' query
+--
+removeF :: [Text] -> Free Expr ()
+removeF txts = liftF (Remove txts ())
 
 -- | Prepare 'RETURN' query
 --
