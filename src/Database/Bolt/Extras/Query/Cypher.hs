@@ -15,8 +15,10 @@ module Database.Bolt.Extras.Query.Cypher
 -- This file contains some converation rules from 'Database.Bolt' types to `Cypher`.
 -------------------------------------------------------------------------------------------------
 
+import           Data.Monoid                   ((<>))
 import           Data.Text                     as T (Text, concat, cons,
-                                                     intercalate, pack, toUpper)
+                                                     intercalate, pack, replace,
+                                                     toUpper)
 import           Database.Bolt                 (Value (..))
 import           Database.Bolt.Extras.Template (Label, Property)
 import           Database.Bolt.Extras.Utils    (currentLoc)
@@ -34,10 +36,13 @@ instance ToCypher Value where
   toCypher (B bool)   = toUpper . pack . show $ bool
   toCypher (I int)    = pack . show $ int
   toCypher (F double) = pack . show $ double
-  toCypher (T t)      = [text|"$t"|]
+  toCypher (T t)      = "\"" <> escapeSpecSymbols t <> "\""
   toCypher (L values) = let cvalues = T.intercalate "," $ map toCypher values
                         in [text|[$cvalues]|]
   toCypher _          = error $ $currentLoc ++ "unacceptable Value type"
+
+escapeSpecSymbols :: Text -> Text
+escapeSpecSymbols = replace "\"" "\\\"" . replace "\\" "\\\\"
 
 -- | Label with @name@ are formatted into @:name@
 --

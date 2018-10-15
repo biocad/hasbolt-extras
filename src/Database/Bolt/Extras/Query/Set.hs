@@ -7,10 +7,12 @@ module Database.Bolt.Extras.Query.Set
   ) where
 
 import           Control.Monad.IO.Class              (MonadIO)
-import           Data.Text                           (Text, append, intercalate)
+import           Data.Monoid                         ((<>))
+import           Data.Text                           (Text, intercalate)
 import           Database.Bolt                       (BoltActionT,
-                                                      RecordValue (..), at,
-                                                      exact, query, Value (..))
+                                                      RecordValue (..),
+                                                      Value (..), at, exact,
+                                                      query)
 import           Database.Bolt.Extras.Persisted      (BoltId, fromInt)
 import           Database.Bolt.Extras.Query.Cypher   (ToCypher (..))
 import           Database.Bolt.Extras.Query.Get      (NodeGetter, condIdAsText,
@@ -26,7 +28,7 @@ setNode nodeGetter props = do
     let nodeGetterT = nodeAsText (varQ, nodeGetter)
     let condId      = condIdAsText (varQ, nodeGetter)
 
-    let newProperties = intercalate "," $ fmap formPropertySet $ filter ((/= N ()) . snd) props
+    let newProperties = intercalate "," $ formPropertySet <$> filter ((/= N ()) . snd) props
 
     let getQuery = [text|MATCH $nodeGetterT
                          WHERE $condId
@@ -41,7 +43,7 @@ setNode nodeGetter props = do
     varQ = "n"
 
     formPropertyName :: Text -> Text
-    formPropertyName n = varQ `append` "." `append` n
+    formPropertyName n = varQ <> "." <> n
 
     formPropertySet :: Property -> Text
-    formPropertySet (name, prop) = formPropertyName name `append` "=" `append` toCypher prop
+    formPropertySet (name, prop) = formPropertyName name <> "=" <> toCypher prop
