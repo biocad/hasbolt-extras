@@ -31,6 +31,8 @@ library
                      , Database.Bolt.Extras.Template
                      , Database.Bolt.Extras.Utils
                      , Database.Bolt.Extras.DSL
+                     , Database.Bolt.Extras.DSL.Internal.New
+                     , Database.Bolt.Extras.DSL.Internal.NewNew
   other-modules:       Database.Bolt.Extras.Query.Get
                      , Database.Bolt.Extras.Query.Put
                      , Database.Bolt.Extras.Query.Set
@@ -59,3 +61,22 @@ library
                      , th-lift-instances
   ghc-options:     -Wall -O2
   default-language: Haskell2010
+  default-extensions:   DataKinds
+                      , KindSignatures
+                      , MultiParamTypeClasses
+                      , TypeOperators
+                      , FlexibleInstances
+                      , GADTs
+                      , PolyKinds
+                      , RankNTypes
+                      , TypeApplications
+                      , ScopedTypeVariables
+                      , InstanceSigs
+                      , UndecidableInstances
+                      , OverloadedLabels
+                      , OverloadedStrings
+                      , RecordWildCards
+                      , TypeFamilies
+                      , FlexibleContexts
+                      , ConstraintKinds
+                      , AllowAmbiguousTypes
