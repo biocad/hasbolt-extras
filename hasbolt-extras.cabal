@@ -1,5 +1,5 @@
 name:           hasbolt-extras
-version:        0.0.0.12
+version:        0.0.0.13
 synopsis:       Extras for hasbolt library
 description:    Extras for hasbolt library
 homepage:       https://github.com/biocad/hasbolt-extras#readme
@@ -48,6 +48,8 @@ library
                      , Database.Bolt.Extras.DSL.Internal.Instances
                   
   build-depends:       base >=4.7 && <5
+                     , aeson
+                     , aeson-casing
                      , containers
                      , free
                      , hasbolt
