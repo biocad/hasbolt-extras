@@ -1,8 +1,10 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell   #-}
 
 module Database.Bolt.Extras.Graph
   (
     Graph (..)
+  , vertices
+  , relations
   , emptyGraph
   , addNode
   , addRelation

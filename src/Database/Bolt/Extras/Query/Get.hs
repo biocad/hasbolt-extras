@@ -10,11 +10,16 @@ module Database.Bolt.Extras.Query.Get
     , getGraph
     , nodeAsText
     , condIdAsText
+    , mergeGraphs
     ) where
 
+import           Control.Lens                        (over, (^.))
 import           Control.Monad.IO.Class              (MonadIO)
-import           Data.Map.Strict                     (Map, keys, mapWithKey,
-                                                      toList, (!))
+import           Data.List                           (foldl')
+import           Data.Map.Strict                     (Map, keys, mapKeys,
+                                                      mapWithKey, toList, union,
+                                                      (!))
+import           Data.Monoid                         ((<>))
 import qualified Data.Text                           as T (Text, concat, empty,
                                                            intercalate, pack)
 import           Database.Bolt                       (BoltActionT, Node (..),
@@ -22,7 +27,8 @@ import           Database.Bolt                       (BoltActionT, Node (..),
                                                       Relationship (..),
                                                       URelationship (..), exact,
                                                       query)
-import           Database.Bolt.Extras.Graph          (Graph (..))
+import           Database.Bolt.Extras.Graph          (Graph (..), emptyGraph,
+                                                      relations, vertices)
 import           Database.Bolt.Extras.Persisted      (BoltId)
 import           Database.Bolt.Extras.Query.Cypher   (ToCypher (..))
 import           Database.Bolt.Extras.Query.Utils    (NodeName)
@@ -56,23 +62,17 @@ type GraphGetResponse = Graph NodeName Node URelationship
 --
 getGraph :: (MonadIO m) => [T.Text] -> GraphGetRequest -> BoltActionT m [GraphGetResponse]
 getGraph customConds requestGraph = do
-  response <- query (formQuery customConds nodeVars edgesVars vertices rels)
+  response <- query (formQuery customConds nodeVars edgesVars (requestGraph ^. vertices) (requestGraph ^. relations))
   mapM (\i -> do
-      nodes <- sequence $ mapOnlyKey (fmap (!! i) . flip exactValues response) vertices
-      edges <- sequence $ mapOnlyKey (fmap (makeU . (!! i)) . flip exactValues response . namesToText) rels
+      nodes <- sequence $ mapOnlyKey (fmap (!! i) . flip exactValues response) (requestGraph ^. vertices)
+      edges <- sequence $ mapOnlyKey (fmap (makeU . (!! i)) . flip exactValues response . namesToText) (requestGraph ^. relations)
       return (Graph nodes edges)) [0.. length response - 1]
   where
-    vertices :: Map NodeName NodeGetter
-    vertices = _vertices requestGraph
-
-    rels :: Map (NodeName, NodeName) RelGetter
-    rels = _relations requestGraph
-
     nodeVars :: [T.Text]
-    nodeVars = keys vertices
+    nodeVars = keys $ requestGraph ^. vertices
 
     edgesVars :: [T.Text]
-    edgesVars = map (\k -> T.concat [fst k, "0", snd k]) (keys rels)
+    edgesVars = map (\k -> T.concat [fst k, "0", snd k]) (keys $ requestGraph ^. relations)
 
     exactValues :: (MonadIO m, RecordValue a) => T.Text -> [Record] -> BoltActionT m [a]
     exactValues var = mapM (exact . (! var))
@@ -90,19 +90,19 @@ getGraph customConds requestGraph = do
 -- | This function creates cypher query, which is used for getting graph from the database.
 --
 formQuery :: [T.Text] -> [T.Text] -> [T.Text] -> Map NodeName NodeGetter -> Map (NodeName, NodeName) RelGetter -> T.Text
-formQuery customConds returnNodes returnEdges vertices rels =
+formQuery customConds returnNodes returnEdges vertices' rels =
   [text|MATCH $completeRequest
         $conditionsQ
         RETURN $completeResponse|]
   where
-    nodes = nodeAsText <$> toList vertices
+    nodes = nodeAsText <$> toList vertices'
 
-    conditionsId     = intercalateAnd . filter (/= "\n") $ fmap condIdAsText (toList vertices)
+    conditionsId     = intercalateAnd . filter (/= "\n") $ fmap condIdAsText (toList vertices')
     customConditions = intercalateAnd customConds
     conditions       = intercalateAnd . filter (/= T.empty) $ [conditionsId, customConditions]
     conditionsQ      = if conditions == T.empty then "" else T.concat ["WHERE ", conditions]
 
-    edges = fmap (relationshipAsText vertices) (toList rels)
+    edges = fmap (relationshipAsText vertices') (toList rels)
 
     completeRequest  = T.intercalate "," $ nodes ++ edges
     completeResponse = T.intercalate "," $ returnNodes ++ returnEdges
@@ -122,17 +122,17 @@ nodeAsText (name, sel) = [text|($name $labels $propsQ)|]
     propsQ = maybeNull (\props -> T.concat ["{", toCypher props, "}"]) (propsN sel)
 
 relationshipAsText :: Map NodeName NodeGetter -> ((NodeName, NodeName), RelGetter) -> T.Text
-relationshipAsText vertices ((begNodeName, endNodeName), uRel) =
+relationshipAsText vertices' ((begNodeName, endNodeName), uRel) =
   [text|($begNodeName $begNodeLabels $begNodeProps)-[$name $typeQ $propsQ]-($endNodeName $endNodeLabels $endNodeProps)|]
   where
     name   = T.concat [begNodeName, "0", endNodeName]
     typeQ  = maybeNull toCypher (labelR uRel)
 
-    begNode       = vertices ! begNodeName
+    begNode       = vertices' ! begNodeName
     begNodeLabels = maybeNull toCypher $ labelsN begNode
     begNodeProps  = maybeNull (\props -> T.concat ["{", toCypher props, "}"]) (propsN begNode)
 
-    endNode       = vertices ! endNodeName
+    endNode       = vertices' ! endNodeName
     endNodeLabels = maybeNull toCypher $ labelsN endNode
     endNodeProps  = maybeNull (\props -> T.concat ["{", toCypher props, "}"]) (propsN endNode)
 
@@ -140,3 +140,18 @@ relationshipAsText vertices ((begNodeName, endNodeName), uRel) =
 
 maybeNull :: (a -> T.Text) -> Maybe a -> T.Text
 maybeNull = maybe ""
+
+mergeGraphs :: [GraphGetResponse] -> GraphGetResponse
+mergeGraphs graphs = foldl' mergeGraph emptyGraph (updateGraph <$> graphs)
+  where
+    updateGraph :: GraphGetResponse -> GraphGetResponse
+    updateGraph graph = do
+        let namesMap     = (\name node -> name <> (T.pack . show . nodeIdentity $ node)) `mapWithKey` (graph ^. vertices)
+        let newVertices  = mapKeys (\name -> namesMap ! name) (graph ^. vertices)
+        let newRelations = mapKeys (\(startName, endName) -> (namesMap ! startName, namesMap ! endName)) (graph ^. relations)
+        Graph newVertices newRelations
+
+    mergeGraph :: GraphGetResponse -> GraphGetResponse -> GraphGetResponse
+    mergeGraph graphToMerge initialGraph = over relations (union (graphToMerge ^. relations)) $
+                                           over vertices  (union (graphToMerge ^. vertices))
+                                           initialGraph

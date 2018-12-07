@@ -13,18 +13,20 @@ module Database.Bolt.Extras.Query
   , putGraph
   , setNode
   , deleteNodes
+  , mergeGraphs
   ) where
 
 import           Database.Bolt.Extras.Query.Cypher (ToCypher (..))
+import           Database.Bolt.Extras.Query.Delete (deleteNodes)
 import           Database.Bolt.Extras.Query.Get    (GraphGetRequest,
                                                     GraphGetResponse,
                                                     NodeGetter (..),
-                                                    RelGetter (..), getGraph)
+                                                    RelGetter (..), getGraph,
+                                                    mergeGraphs)
 import           Database.Bolt.Extras.Query.Put    (GraphPutRequest,
                                                     GraphPutResponse,
                                                     PutNode (..),
                                                     PutRelationship (..),
                                                     putGraph)
 import           Database.Bolt.Extras.Query.Set    (setNode)
-import           Database.Bolt.Extras.Query.Delete (deleteNodes)
 import           Database.Bolt.Extras.Query.Utils  (NodeName)
