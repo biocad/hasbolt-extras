@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.14] - 2018-12-25
+### Added
+- `mergeGraphs`, ability to take not all node properties from DB.
+### Changed
+- Refactoring.
+
 ## [0.0.0.13] - 2018-12-05
 ### Added
 - `ToJSON` and `FromJSON` instances for `Persisted a`.

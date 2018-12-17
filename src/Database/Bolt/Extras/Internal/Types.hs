@@ -1,23 +1,18 @@
-module Database.Bolt.Extras.Template.Types
+module Database.Bolt.Extras.Internal.Types
   (
     FromValue (..)
   , Label
   , Labels (..)
-  , Node (..)
   , NodeLike (..)
   , Properties (..)
   , Property
-  , Relationship (..)
   , ToValue (..)
   , URelationLike (..)
-  , URelationship (..)
-  , Value (..)
   ) where
 
 import           Data.Map.Strict (Map)
 import           Data.Text       (Text)
-import           Database.Bolt   (Node (..), Relationship (..),
-                                  URelationship (..), Value (..))
+import           Database.Bolt   (Node (..), URelationship (..), Value (..))
 
 -- | Alias for Neo4j label.
 --
@@ -49,6 +44,8 @@ class ToValue a where
 class FromValue a where
   fromValue :: Value -> a
 
+-- | 'Labels' means that labels can be obtained from entity.
+--
 class Labels a where
   getLabels :: a -> [Label]
 
@@ -58,6 +55,8 @@ instance Labels Node where
 instance Labels URelationship where
   getLabels = pure . urelType
 
+-- | 'Properties' means that properties can be obtained from entity.
+--
 class Properties a where
   getProps :: a -> Map Text Value
 

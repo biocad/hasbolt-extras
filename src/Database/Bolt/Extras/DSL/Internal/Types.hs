@@ -23,11 +23,11 @@ module Database.Bolt.Extras.DSL.Internal.Types
   , toRelSelector
   ) where
 
-import           Data.Map.Strict                (toList)
-import           Data.Text                      (Text)
-import           Database.Bolt                  (Node (..), URelationship (..),
-                                                 Value (..))
-import           Database.Bolt.Extras.Persisted (BoltId)
+import           Data.Map.Strict      (toList)
+import           Data.Text            (Text)
+import           Database.Bolt        (Node (..), URelationship (..),
+                                       Value (..))
+import           Database.Bolt.Extras (BoltId)
 
 -- | Class for Selectors, which can update identifier, labels and props.
 --

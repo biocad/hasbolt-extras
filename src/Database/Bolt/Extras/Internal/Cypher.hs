@@ -4,7 +4,7 @@
 {-# LANGUAGE TemplateHaskell      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Database.Bolt.Extras.Query.Cypher
+module Database.Bolt.Extras.Internal.Cypher
   (
     ToCypher (..)
   ) where
@@ -15,14 +15,14 @@ module Database.Bolt.Extras.Query.Cypher
 -- This file contains some converation rules from 'Database.Bolt' types to `Cypher`.
 -------------------------------------------------------------------------------------------------
 
-import           Data.Monoid                   ((<>))
-import           Data.Text                     as T (Text, concat, cons,
-                                                     intercalate, pack, replace,
-                                                     toUpper)
-import           Database.Bolt                 (Value (..))
-import           Database.Bolt.Extras.Template (Label, Property)
-import           Database.Bolt.Extras.Utils    (currentLoc)
-import           NeatInterpolation             (text)
+import           Data.Monoid                         ((<>))
+import           Data.Text                           as T (Text, concat, cons,
+                                                           intercalate, pack,
+                                                           replace, toUpper)
+import           Database.Bolt                       (Value (..))
+import           Database.Bolt.Extras.Internal.Types (Label, Property)
+import           Database.Bolt.Extras.Utils          (currentLoc)
+import           NeatInterpolation                   (text)
 
 -- | The class for convertation into Cypher.
 --

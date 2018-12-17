@@ -1,15 +1,24 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
+
 module Database.Bolt.Extras.Utils
   (
     dummyId
   , union
   , currentLoc
+  , exactValues
+  , exactValuesM
   ) where
 
-import           Data.List           (nub)
-import qualified Data.Map.Strict     as M (union)
-import           Database.Bolt       (Node (..))
-import           Language.Haskell.TH (Exp (..), Lit (..), Loc (..), Q, location)
-import           Text.Printf         (printf)
+import           Control.Monad.IO.Class (MonadIO)
+import           Data.List              (nub)
+import           Data.Map.Strict        as M ((!), (!?))
+import qualified Data.Map.Strict        as M (union)
+import           Data.Text              (Text)
+import           Database.Bolt          as B (BoltActionT, Node (..), Record,
+                                              RecordValue, Value (..), exact)
+import           Language.Haskell.TH    (Exp (..), Lit (..), Loc (..), Q,
+                                         location)
+import           Text.Printf            (printf)
 
 
 -- | 'dummyId' is used to load 'Node' and 'URelationship' into database,
@@ -32,3 +41,17 @@ currentLoc :: Q Exp
 currentLoc = do
   loc <- location
   pure $ LitE $ StringL $ printf "%s:%d: " (loc_module loc) (fst $ loc_start loc)
+
+-- | Extract values
+--
+exactValues :: (Monad m, RecordValue a) => Text -> [Record] -> m [a]
+exactValues var = mapM (exact . (! var))
+
+-- | Extract values (maybe)
+exactValuesM :: (MonadIO m, RecordValue a) => Text -> [Record] -> BoltActionT m [Maybe a]
+exactValuesM var = mapM (safeExact . (!? var))
+  where
+    safeExact :: (MonadIO m, RecordValue a) => Maybe B.Value -> BoltActionT m (Maybe a)
+    safeExact Nothing       = pure Nothing
+    safeExact (Just (N ())) = pure Nothing
+    safeExact (Just x )     = Just <$> exact x
