@@ -1,6 +1,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
 
-module Database.Bolt.Extras.Condition
+module Database.Bolt.Extras.Internal.Condition
   (
     Condition (..)
   , tautology

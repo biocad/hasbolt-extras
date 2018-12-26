@@ -1,8 +1,7 @@
-{-# LANGUAGE DeriveFunctor   #-}
-{-# LANGUAGE DeriveGeneric   #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveGeneric #-}
 
-module Database.Bolt.Extras.Persisted
+module Database.Bolt.Extras.Internal.Persisted
   (
     BoltId
   , Persisted (..)
@@ -10,11 +9,12 @@ module Database.Bolt.Extras.Persisted
   , fromInt
   ) where
 
-import           Database.Bolt              (Node (..), Relationship (..),
-                                             URelationship (..))
-import           Database.Bolt.Extras.Utils (currentLoc)
-import           GHC.Generics               (Generic (..))
-
+import           Data.Aeson        (FromJSON (..), ToJSON (..),
+                                    genericParseJSON, genericToJSON)
+import           Data.Aeson.Casing (aesonPrefix, snakeCase)
+import           Database.Bolt     (Node (..), Relationship (..),
+                                    URelationship (..))
+import           GHC.Generics      (Generic (..))
 
 -- | 'BoltId' is alias for Bolt 'Node', 'Relationship' and 'URelationship' identities.
 --
@@ -30,9 +30,9 @@ data Persisted a = Persisted { objectId    :: BoltId
 --
 fromInt :: Int -> BoltId
 fromInt i | i >= 0    = i
-          | otherwise = error $ $currentLoc ++ "could not create BoltId with identity less then zero."
+          | otherwise = error "Database.Bolt.Extras.Internal.Persisted: could not create BoltId with identity less then zero."
 
--- Common class to get 'BoltId' from the object.
+-- | Common class to get 'BoltId' from the object.
 --
 class GetBoltId a where
   getBoltId :: a -> BoltId
@@ -48,3 +48,9 @@ instance GetBoltId URelationship where
 
 instance GetBoltId (Persisted a) where
   getBoltId = fromInt . objectId
+
+instance ToJSON a => ToJSON (Persisted a) where
+  toJSON = genericToJSON $ aesonPrefix snakeCase
+
+instance FromJSON a => FromJSON (Persisted a) where
+  parseJSON = genericParseJSON $ aesonPrefix snakeCase

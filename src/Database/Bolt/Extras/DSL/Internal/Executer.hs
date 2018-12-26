@@ -13,9 +13,9 @@ import           Data.Monoid                                 ((<>))
 import           Data.Text                                   as T (Text,
                                                                    intercalate,
                                                                    unwords)
+import           Database.Bolt.Extras                        (ToCypher (..))
 import           Database.Bolt.Extras.DSL.Internal.Instances ()
 import           Database.Bolt.Extras.DSL.Internal.Types     (Expr (..))
-import           Database.Bolt.Extras.Query.Cypher           (ToCypher (..))
 
 -- | Translates 'Expr' to cypher query.
 --

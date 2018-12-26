@@ -3,17 +3,22 @@
 {-# LANGUAGE TemplateHaskell   #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Database.Bolt.Extras.Template.Instances () where
+module Database.Bolt.Extras.Internal.Instances () where
 
+import           Control.Applicative                 ((<|>))
+import           Data.Aeson                          (FromJSON (..),
+                                                      ToJSON (..))
+import           Data.Aeson.Types                    (Parser)
 import           Data.Map.Strict                     (Map)
 import           Data.Text                           (Text)
 import           Database.Bolt                       (Value (..))
 import qualified Database.Bolt                       as DB (Structure)
-import           Database.Bolt.Extras.Template.Types (FromValue (..),
+import           Database.Bolt.Extras.Internal.Types (FromValue (..),
                                                       ToValue (..))
 import           Database.Bolt.Extras.Utils          (currentLoc)
 import           GHC.Float                           (double2Float,
                                                       float2Double)
+
 
 instance ToValue () where
   toValue = N
@@ -82,7 +87,7 @@ instance FromValue a => FromValue [a] where
 
 instance FromValue a => FromValue (Maybe a) where
   fromValue (N ()) = Nothing
-  fromValue a = Just $ fromValue a
+  fromValue a      = Just $ fromValue a
 
 instance FromValue (Map Text Value) where
   fromValue (M mapV) = mapV
@@ -91,3 +96,22 @@ instance FromValue (Map Text Value) where
 instance FromValue DB.Structure where
   fromValue (S structureV) = structureV
   fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Structure"
+
+instance ToJSON Value where
+  toJSON (N _) = toJSON ()
+  toJSON (B b) = toJSON b
+  toJSON (I i) = toJSON i
+  toJSON (F f) = toJSON f
+  toJSON (T t) = toJSON t
+  toJSON (L l) = toJSON l
+  toJSON (M m) = toJSON m
+  toJSON _     = error "Database.Bolt.Extras.Internal.Instances: could not convert to json Database.Bolt.Value"
+
+instance FromJSON Value where
+  parseJSON v = B <$> (parseJSON v :: Parser Bool)
+            <|> I <$> (parseJSON v :: Parser Int)
+            <|> F <$> (parseJSON v :: Parser Double)
+            <|> T <$> (parseJSON v :: Parser Text)
+            <|> L <$> (parseJSON v :: Parser [Value])
+            <|> M <$> (parseJSON v :: Parser (Map Text Value))
+            <|> error "Database.Bolt.Extras.Internal.Instances: could not convert from json Database.Bolt.Value"

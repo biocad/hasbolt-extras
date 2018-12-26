@@ -10,9 +10,9 @@ module Database.Bolt.Extras.DSL.Internal.Instances () where
 import           Control.Monad.Writer                    (execWriter, tell)
 import           Data.Monoid                             ((<>))
 import           Data.Text                               (intercalate, pack)
+import           Database.Bolt.Extras                    (ToCypher (..),
+                                                          fromInt)
 import           Database.Bolt.Extras.DSL.Internal.Types
-import           Database.Bolt.Extras.Persisted          (fromInt)
-import           Database.Bolt.Extras.Query.Cypher       (ToCypher (..))
 import           NeatInterpolation                       (text)
 import           Text.Printf                             (printf)
 

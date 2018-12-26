@@ -2,29 +2,37 @@
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module Database.Bolt.Extras.Query.Put
-    ( GraphPutRequest
-    , GraphPutResponse
-    , PutNode (..)
-    , PutRelationship (..)
-    , putGraph
-    ) where
+module Database.Bolt.Extras.Graph.Internal.Put
+  (
+    PutNode (..)
+  , PutRelationship (..)
+  , GraphPutRequest
+  , GraphPutResponse
+  , putNode
+  , putRelationship
+  , putGraph
+  ) where
 
-import           Control.Monad                     (forM)
-import           Control.Monad.IO.Class            (MonadIO)
-import           Data.Map.Strict                   (mapWithKey, toList, (!))
-import qualified Data.Map.Strict                   as M (map)
-import qualified Data.Text                         as T (Text, pack)
-import           Database.Bolt                     (BoltActionT, Node (..),
-                                                    RecordValue (..),
-                                                    URelationship (..),
-                                                    Value (..), at, exact,
-                                                    query)
-import           Database.Bolt.Extras.Graph        (Graph (..))
-import           Database.Bolt.Extras.Persisted    (BoltId, fromInt)
-import           Database.Bolt.Extras.Query.Cypher (ToCypher (..))
-import           Database.Bolt.Extras.Query.Utils  (NodeName)
-import           NeatInterpolation                 (text)
+import           Control.Monad                                     (forM)
+import           Control.Monad.IO.Class                            (MonadIO)
+import           Data.Map.Strict                                   (mapWithKey,
+                                                                    toList, (!))
+import qualified Data.Map.Strict                                   as M (map)
+import qualified Data.Text                                         as T (Text,
+                                                                         pack)
+import           Database.Bolt                                     (BoltActionT,
+                                                                    Node (..),
+                                                                    RecordValue (..),
+                                                                    URelationship (..),
+                                                                    Value (..),
+                                                                    at, exact,
+                                                                    query)
+import           Database.Bolt.Extras                              (BoltId, ToCypher (..),
+                                                                    fromInt)
+import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph (..))
+import           NeatInterpolation                                 (text)
+
+type NodeName = T.Text
 
 -- | 'PutNode' is the wrapper for 'Node' where we can specify if we want to merge or create it.
 --
@@ -89,11 +97,11 @@ putRelationship start pr end = case pr of
         urelIdentity' <- record `at` varQ >>= exact
         pure $ fromInt urelIdentity'
       where
-        varQ = "r"
+        varQ   = "r"
         labelQ = toCypher urelType
         propsQ = toCypher . toList $ urelProps
         startT = T.pack . show $ start
-        endT = T.pack . show $ end
+        endT   = T.pack . show $ end
 
         putQuery :: T.Text
         putQuery = [text|MATCH (a), (b)
@@ -106,9 +114,9 @@ putRelationship start pr end = case pr of
 --
 putGraph :: (MonadIO m) => GraphPutRequest -> BoltActionT m GraphPutResponse
 putGraph requestGraph = do
-  let vertices = _vertices requestGraph
-  let rels = _relations requestGraph
-  nodes <- sequenceA $ M.map (fmap head . putNode) vertices
+  let vertices' = _vertices requestGraph
+  let rels      = _relations requestGraph
+  nodes <- sequenceA $ M.map (fmap head . putNode) vertices'
   edges <- sequenceA $
           mapWithKey (\key v -> do
               let stNode  = nodes ! fst key

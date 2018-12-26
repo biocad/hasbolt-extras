@@ -1,27 +1,23 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Database.Bolt.Extras.Template.Converters
+module Database.Bolt.Extras.Template.Internal.Converters
  (
     makeNodeLike
   , makeURelationLike
   ) where
 
-import           Control.Lens                        (view, _1)
-import           Control.Monad                       ((>=>))
-import           Data.Map.Strict                     (fromList, member,
-                                                      notMember, (!))
-import           Data.Text                           (Text, pack, unpack)
-import           Database.Bolt.Extras.Template.Types (FromValue (..),
-                                                      Labels (..), Node (..),
-                                                      NodeLike (..),
-                                                      Properties (..),
-                                                      ToValue (..),
-                                                      URelationLike (..),
-                                                      URelationship (..),
-                                                      Value (..))
-import           Database.Bolt.Extras.Utils          (currentLoc, dummyId)
-import           Instances.TH.Lift                   ()
+import           Control.Lens               (view, _1)
+import           Control.Monad              ((>=>))
+import           Data.Map.Strict            (fromList, member, notMember, (!))
+import           Data.Text                  (Text, pack, unpack)
+import           Database.Bolt (Node (..), URelationship (..), Value (..))
+import           Database.Bolt.Extras       (FromValue (..), Labels (..),
+                                             NodeLike (..),
+                                             Properties (..), ToValue (..),
+                                             URelationLike (..))
+import           Database.Bolt.Extras.Utils (currentLoc, dummyId)
+import           Instances.TH.Lift          ()
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
 
@@ -182,7 +178,7 @@ makeToClause label dataCons varName dataFields | null dataFields = pure $ Clause
     -- `x` is a bounded in pattern match variable (e.g. toNode x = ...). If toNode :: a -> Node, then x :: a, i.e. x is data which we want to convert into Node.
     -- `field` is a field record function.
     valuesExp :: [Exp]
-    valuesExp = fmap (\fld -> AppE (VarE 'toValue) (getValue fld)) dataFields
+    valuesExp = fmap (AppE (VarE 'toValue) . getValue) dataFields
 
     -- Retrieve all field record names from the convertible type.
     fieldNames :: [String]
