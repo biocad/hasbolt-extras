@@ -11,14 +11,14 @@
 
 module Database.Bolt.Extras.Graph.Internal.Get
   (
-    NodeName
   -- * Types for requesting nodes and relationships
-  , NodeGetter (..)
+    NodeGetter (..)
   , RelGetter (..)
   , GetterLike (..)
   , (#)
   , defaultNode
   , defaultRel
+  , requestGetters
   -- * Types for extracting nodes and relationships
   , NodeResult (..)
   , RelResult (..)
@@ -48,7 +48,8 @@ import           Data.Map.Strict                                   as M (Map,
                                                                          insert,
                                                                          toList,
                                                                          (!))
-import           Data.Maybe                                        (fromJust,
+import           Data.Maybe                                        (catMaybes,
+                                                                    fromJust,
                                                                     isJust)
 import           Data.Monoid                                       ((<>))
 import           Data.Text                                         (Text, cons,
@@ -64,17 +65,15 @@ import           Database.Bolt.Extras                              (BoltId, GetB
                                                                     NodeLike (..),
                                                                     ToCypher (..),
                                                                     URelationLike (..))
-import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph)
+import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph,
+                                                                    NodeName,
+                                                                    relationName)
 import           Database.Bolt.Extras.Graph.Internal.Class         (Extractable (..),
                                                                     Requestable (..),
                                                                     Returnable (..))
 import           GHC.Generics                                      (Generic)
 import           NeatInterpolation                                 (text)
 import           Text.Printf                                       (printf)
-
--- | Alias for node name
---
-type NodeName = Text
 
 ----------------------------------------------------------
 -- REQUEST --
@@ -128,16 +127,12 @@ instance GetterLike RelGetter where
     withReturn props  rg = rg { rgReturnProps = rgReturnProps rg ++ props }
 
 instance Requestable (NodeName, NodeGetter) where
-  maybeBoltIdCond (name, ng) = pack . printf "ID(%s)=%d" name <$> ngboltId ng
-
   request (name, ng) = [text|($name $labels $propsQ)|]
     where
       labels = toCypher . ngLabels $ ng
       propsQ = "{" <> (toCypher . toList . ngProps $ ng) <> "}"
 
 instance Requestable ((NodeName, NodeName), RelGetter) where
-  maybeBoltIdCond (names, rg) = pack . printf "ID(%s)=%d" (relationName names) <$> rgboltId rg
-
   request ((stName, enName), rg) = [text|($stName)-[$name $typeQ $propsQ]-($enName)|]
     where
       name   = relationName (stName, enName)
@@ -161,18 +156,32 @@ instance Returnable ((NodeName, NodeName), RelGetter) where
                                                } as $name
                                           |]
 
--- | Creates relationship name from the names of its start and end nodes
--- in the way `<startNodeName>0<endNodeName>`.
-relationName :: (NodeName, NodeName) -> Text
-relationName (st, en) = st <> "0" <> en
-
 showRetProps :: Text -> [Text] -> Text
 showRetProps name []    = "properties(" <> name <> ")"
 showRetProps name props = name <> "{" <> intercalate ", " (cons '.' <$> props) <> "}"
 
+-- | Takes all node getters and relationship getters
+-- and write them to single query to request.
+--
+requestGetters :: [(NodeName, NodeGetter)]
+               -> [((NodeName, NodeName), RelGetter)]
+               -> Text
+requestGetters ngs rgs = "MATCH " <> intercalate ", " (fmap request ngs ++ fmap request rgs) <> conditionsIDQ
+  where
+    boltIdCondN :: (NodeName, NodeGetter) -> Maybe Text
+    boltIdCondN (name, ng) = pack . printf "ID(%s)=%d" name <$> ngboltId ng
+
+    boltIdCondR :: ((NodeName, NodeName), RelGetter) -> Maybe Text
+    boltIdCondR (names, rg) = pack . printf "ID(%s)=%d" (relationName names) <$> rgboltId rg
+
+    conditionsID  = catMaybes (fmap boltIdCondN ngs ++ fmap boltIdCondR rgs)
+    conditionsIDQ = if null conditionsID then "" else " WHERE " <> intercalate " AND " conditionsID
+
 ----------------------------------------------------------
 -- RESULT --
 ----------------------------------------------------------
+
+-- | AESON FORMAT
 
 -- | Result for node in the Aeson like format.
 --
@@ -216,6 +225,9 @@ instance Extractable NodeResult where
 instance Extractable RelResult where
   extract = extractFromJSON
 
+----------------------------------------------------------
+-- | BOLT FORMAT
+
 instance Extractable Node where
   extract :: forall m. MonadIO m => Text -> [Record] -> BoltActionT m [Node]
   extract t rec = (toNode <$>) <$> (extractFromJSON t rec :: BoltActionT m [NodeResult])
@@ -238,8 +250,8 @@ instance NodeLike NodeResult where
   fromNode Node{..}     = NodeResult nodeIdentity labels     (toJSON   <$> nodeProps)
 
 instance URelationLike RelResult where
-  toURelation RelResult{..}       = URelationship rresId rresLabel  (fromJust <$> M.filter isJust (fromJSONM <$> rresProps))
-  fromURelation URelationship{..} = RelResult urelIdentity urelType (toJSON   <$> urelProps)
+  toURelation RelResult{..}       = URelationship rresId       rresLabel (fromJust <$> M.filter isJust (fromJSONM <$> rresProps))
+  fromURelation URelationship{..} = RelResult     urelIdentity urelType  (toJSON   <$> urelProps)
 
 ----------------------------------------------------------
 -- GRAPH TYPES --
