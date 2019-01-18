@@ -18,6 +18,9 @@ class Requestable a where
 -- | Class describes entity, which can be returned.
 --
 class Returnable a where
+  -- | If the entity should be returned.
+  shouldReturn' :: a -> Bool
+
   -- | How to return entity in the Cypher.
   return' :: a -> Text
 

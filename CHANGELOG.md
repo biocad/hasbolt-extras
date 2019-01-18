@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.15] - 2019-01-22
+### Changed
+- Ability to choose whether to return entity or not in graphs.
+
 ## [0.0.0.14] - 2018-12-25
 ### Added
 - `mergeGraphs`, ability to take not all node properties from DB.

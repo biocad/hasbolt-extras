@@ -18,7 +18,12 @@ module Database.Bolt.Extras.Graph.Internal.Get
   , (#)
   , defaultNode
   , defaultRel
+  , defaultNodeReturn
+  , defaultNodeNotReturn
+  , defaultRelReturn
+  , defaultRelNotReturn
   , requestGetters
+  , allProps
   -- * Types for extracting nodes and relationships
   , NodeResult (..)
   , RelResult (..)
@@ -81,50 +86,67 @@ import           Text.Printf                                       (printf)
 
 -- | Helper to find 'Node's.
 --
-data NodeGetter = NodeGetter { ngboltId      :: Maybe BoltId
-                             , ngLabels      :: [Label]
-                             , ngProps       :: Map Text B.Value
-                             , ngReturnProps :: [Text]
+data NodeGetter = NodeGetter { ngboltId       :: Maybe BoltId
+                             , ngLabels       :: [Label]
+                             , ngProps        :: Map Text B.Value
+                             , ngReturnProps  :: [Text]
+                             , ngShouldReturn :: Bool
                              }
   deriving (Show, Eq)
 
 -- | Helper to find 'URelationship's.
 --
-data RelGetter = RelGetter { rgboltId      :: Maybe BoltId
-                           , rgLabel       :: Maybe Label
-                           , rgProps       :: Map Text B.Value
-                           , rgReturnProps :: [Text]
+data RelGetter = RelGetter { rgboltId       :: Maybe BoltId
+                           , rgLabel        :: Maybe Label
+                           , rgProps        :: Map Text B.Value
+                           , rgReturnProps  :: [Text]
+                           , rgShouldReturn :: Bool
                            }
   deriving (Show, Eq)
 
 (#) :: a -> (a -> b) -> b
 (#) = (&)
 
-defaultNode :: NodeGetter
+defaultNode :: Bool -> NodeGetter
 defaultNode = NodeGetter Nothing [] (fromList []) []
 
-defaultRel :: RelGetter
+defaultRel :: Bool -> RelGetter
 defaultRel = RelGetter Nothing Nothing (fromList []) []
+
+defaultNodeReturn :: NodeGetter
+defaultNodeReturn = defaultNode True
+
+defaultNodeNotReturn :: NodeGetter
+defaultNodeNotReturn = defaultNode False
+
+defaultRelReturn :: RelGetter
+defaultRelReturn = defaultRel True
+
+defaultRelNotReturn :: RelGetter
+defaultRelNotReturn = defaultRel False
 
 -- | Helper to work with Getters.
 --
 class GetterLike a where
-  withBoltId :: BoltId          -> a -> a
-  withLabel  :: Label           -> a -> a
-  withProp   :: (Text, B.Value) -> a -> a
-  withReturn :: [Text]          -> a -> a
+    withBoltId   :: BoltId          -> a -> a
+    withLabel    :: Label           -> a -> a
+    withProp     :: (Text, B.Value) -> a -> a
+    withReturn   :: [Text]          -> a -> a
+    shouldReturn ::                    a -> a
 
 instance GetterLike NodeGetter where
-    withBoltId boltId ng = ng { ngboltId      = Just boltId }
-    withLabel  lbl    ng = ng { ngLabels      = lbl : ngLabels ng }
-    withProp (pk, pv) ng = ng { ngProps       = insert pk pv (ngProps ng) }
-    withReturn props  ng = ng { ngReturnProps = ngReturnProps ng ++ props }
+    withBoltId boltId ng = ng { ngboltId       = Just boltId }
+    withLabel  lbl    ng = ng { ngLabels       = lbl : ngLabels ng }
+    withProp (pk, pv) ng = ng { ngProps        = insert pk pv (ngProps ng) }
+    withReturn props  ng = ng { ngReturnProps  = ngReturnProps ng ++ props }
+    shouldReturn      ng = ng { ngShouldReturn = True }
 
 instance GetterLike RelGetter where
-    withBoltId boltId rg = rg { rgboltId      = Just boltId }
-    withLabel  lbl    rg = rg { rgLabel       = Just lbl    }
-    withProp (pk, pv) rg = rg { rgProps       = insert pk pv (rgProps rg) }
-    withReturn props  rg = rg { rgReturnProps = rgReturnProps rg ++ props }
+    withBoltId boltId rg = rg { rgboltId       = Just boltId }
+    withLabel  lbl    rg = rg { rgLabel        = Just lbl    }
+    withProp (pk, pv) rg = rg { rgProps        = insert pk pv (rgProps rg) }
+    withReturn props  rg = rg { rgReturnProps  = rgReturnProps rg ++ props }
+    shouldReturn      rg = rg { rgShouldReturn = True }
 
 instance Requestable (NodeName, NodeGetter) where
   request (name, ng) = [text|($name $labels $propsQ)|]
@@ -140,7 +162,9 @@ instance Requestable ((NodeName, NodeName), RelGetter) where
       propsQ = "{" <> (toCypher . toList . rgProps $ rg) <> "}"
 
 instance Returnable (NodeName, NodeGetter) where
-  return' (name, ng) = let showProps = showRetProps name $ ngReturnProps ng
+  shouldReturn' (_, ng) = ngShouldReturn ng
+
+  return' (name, ng)   = let showProps = showRetProps name $ ngReturnProps ng
                           in [text|{ id: id($name),
                                      labels: labels($name),
                                      props: $showProps
@@ -148,6 +172,8 @@ instance Returnable (NodeName, NodeGetter) where
                               |]
 
 instance Returnable ((NodeName, NodeName), RelGetter) where
+  shouldReturn' (_, rg)           = rgShouldReturn rg
+
   return' ((stName, enName), rg) = let name      = relationName (stName, enName)
                                        showProps = showRetProps name $ rgReturnProps rg
                                       in [text|{ id: id($name),
@@ -156,8 +182,12 @@ instance Returnable ((NodeName, NodeName), RelGetter) where
                                                } as $name
                                           |]
 
+allProps :: [Text]
+allProps = ["*"]
+
 showRetProps :: Text -> [Text] -> Text
-showRetProps name []    = "properties(" <> name <> ")"
+showRetProps name []    = name <> "{}"
+showRetProps name ["*"] = "properties(" <> name <> ")"
 showRetProps name props = name <> "{" <> intercalate ", " (cons '.' <$> props) <> "}"
 
 -- | Takes all node getters and relationship getters
@@ -166,7 +196,7 @@ showRetProps name props = name <> "{" <> intercalate ", " (cons '.' <$> props) <
 requestGetters :: [(NodeName, NodeGetter)]
                -> [((NodeName, NodeName), RelGetter)]
                -> Text
-requestGetters ngs rgs = "MATCH " <> intercalate ", " (fmap request ngs ++ fmap request rgs) <> conditionsIDQ
+requestGetters ngs rgs = "MATCH " <> intercalate ", " (fmap request rgs ++ fmap request ngs) <> conditionsIDQ
   where
     boltIdCondN :: (NodeName, NodeGetter) -> Maybe Text
     boltIdCondN (name, ng) = pack . printf "ID(%s)=%d" name <$> ngboltId ng
