@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
@@ -51,7 +50,7 @@ data PutRelationship = MergeR URelationship | CreateR URelationship
 
 instance Requestable (NodeName, PutNode) where
   request (name, BoltId boltId) = let showBoltId = pack . show $ boltId
-                                    in [text|MATCH ($name) WHERE ID($name) = $showBoltId|]
+                                  in [text|MATCH ($name) WHERE ID($name) = $showBoltId|]
   request (name, MergeN node)   = requestNode "MERGE"  name node
   request (name, CreateN node)  = requestNode "CREATE" name node
 
@@ -75,11 +74,12 @@ requestURelationship q (stName, enName) URelationship{..} =
 
 -- | Takes all 'PutNode's and 'PutRelationship's
 -- and write them to single query to request.
---
+-- Here "WITH" is used, because you cannot perform
+-- "match", "merge" or "create" at the same query.
 requestPut :: [(NodeName, PutNode)]
            -> [((NodeName, NodeName), PutRelationship)]
-           -> Text
-requestPut pns prs = fst fullRequest
+           -> (Text, [Text])
+requestPut pns prs = (fst fullRequest, [])
   where
     foldStepN :: (Text, [NodeName]) -> (NodeName, PutNode) -> (Text, [NodeName])
     foldStepN accum pn@(name, _) = foldStep accum name pn
@@ -97,13 +97,15 @@ requestPut pns prs = fst fullRequest
     fullRequest  = foldl' foldStepR requestNodes prs
 
 instance Returnable (NodeName, PutNode) where
-  shouldReturn' _   = True
+  -- always return all nodes
+  isReturned' _     = True
   return' (name, _) = [text|ID($name) AS $name|]
 
 instance Returnable ((NodeName, NodeName), PutRelationship) where
-  shouldReturn' _    = True
+  -- always return all relations
+  isReturned' _      = True
   return' (names, _) = let name = relationName names
-                         in [text|ID($name) AS $name|]
+                       in [text|ID($name) AS $name|]
 
 ------------------------------------------------------------------------------------------------
 

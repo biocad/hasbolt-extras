@@ -19,7 +19,7 @@ class Requestable a where
 --
 class Returnable a where
   -- | If the entity should be returned.
-  shouldReturn' :: a -> Bool
+  isReturned' :: a -> Bool
 
   -- | How to return entity in the Cypher.
   return' :: a -> Text

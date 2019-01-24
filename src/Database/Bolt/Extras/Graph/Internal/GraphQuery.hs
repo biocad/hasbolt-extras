@@ -49,8 +49,7 @@ import           Database.Bolt.Extras.Graph.Internal.Get           (NodeGetter,
                                                                     RelGetter,
                                                                     RelResult,
                                                                     requestGetters)
-import           Database.Bolt.Extras.Graph.Internal.Put           (PutNode,
-                                                                    PutRelationship,
+import           Database.Bolt.Extras.Graph.Internal.Put           (PutNode, PutRelationship,
                                                                     requestPut)
 import           NeatInterpolation                                 (text)
 
@@ -71,7 +70,7 @@ class GraphQuery a where
                       Requestable ((NodeName, NodeName), RelReq a))
                   => [(NodeName, NodeReq a)]
                   -> [((NodeName, NodeName), RelReq a)]
-                  -> Text
+                  -> (Text, [Text])
 
   -- | Abstract function to form query for request.
   --
@@ -89,12 +88,14 @@ class GraphQuery a where
       vertices'        = toList (graph ^. vertices)
       relations'       = toList (graph ^. relations)
 
-      conditionsQ      = if Prelude.null customConds then "" else "WHERE " <> intercalate " AND " customConds
+      (completeRequest, reqConds) = requestEntities @a vertices' relations'
 
-      returnVertices   = return' <$> filter shouldReturn' vertices'
-      returnRelations  = return' <$> filter shouldReturn' relations'
+      conditions       = reqConds ++ customConds
+      conditionsQ      = if Prelude.null conditions then "" else " WHERE " <> intercalate " AND " conditions
 
-      completeRequest  = requestEntities @a vertices' relations'
+      returnVertices   = return' <$> filter isReturned' vertices'
+      returnRelations  = return' <$> filter isReturned' relations'
+
       completeReturn   = intercalate ", " $ Prelude.filter (not . T.null) $ returnVertices ++ returnRelations
 
   -- | Abstract function, which exctracts graph from records if nodes and relations can be extracted.
@@ -124,11 +125,10 @@ class GraphQuery a where
               -> BoltActionT m [Graph NodeName (NodeRes a) (RelRes a)]
   makeRequest conds graph = do
       response <- query $ formQuery @a conds graph
-
       extractGraphs @a presentedVertices presentedRelations response
     where
-      presentedVertices  = fmap fst . filter shouldReturn' . toList $ graph ^. vertices
-      presentedRelations = fmap fst . filter shouldReturn' . toList $ graph ^. relations
+      presentedVertices  = fmap fst . filter isReturned' . toList $ graph ^. vertices
+      presentedRelations = fmap fst . filter isReturned' . toList $ graph ^. relations
 
 ---------------------------------------------------------------------------------------
 -- GET --
