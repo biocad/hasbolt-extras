@@ -12,14 +12,15 @@ import           Database.Bolt          (BoltActionT, Record)
 -- | Class describes entity, which can be requested.
 --
 class Requestable a where
-  -- | Condition for BoltId like "ID(a) = b" if BoltId is presented.
-  maybeBoltIdCond :: a -> Maybe Text
   -- | How to convert entity to Cypher.
   request         :: a -> Text
 
 -- | Class describes entity, which can be returned.
 --
 class Returnable a where
+  -- | If the entity should be returned.
+  isReturned' :: a -> Bool
+
   -- | How to return entity in the Cypher.
   return' :: a -> Text
 

@@ -13,6 +13,7 @@ module Database.Bolt.Extras.Graph.Internal.GraphQuery
     GraphQuery (..)
   , GetRequestA (..)
   , GetRequestB (..)
+  , PutRequestB (..)
   , mergeGraphs
   ) where
 
@@ -20,35 +21,36 @@ import           Control.Lens                                      (over, (^.))
 import           Control.Monad.IO.Class                            (MonadIO)
 import           Data.List                                         (foldl')
 import           Data.Map.Strict                                   (fromList,
-                                                                    keys,
                                                                     mapKeys,
                                                                     mapWithKey,
                                                                     toList,
                                                                     union, (!))
-import           Data.Maybe                                        (catMaybes)
 import           Data.Monoid                                       ((<>))
-import           Data.Text                                         (Text,
-                                                                    intercalate,
-                                                                    pack)
+import           Data.Text                                         as T (Text, intercalate,
+                                                                         null,
+                                                                         pack)
 import           Database.Bolt                                     (BoltActionT,
                                                                     Node,
                                                                     Record,
                                                                     URelationship,
                                                                     query)
-import           Database.Bolt.Extras                              (GetBoltId (..))
+import           Database.Bolt.Extras                              (BoltId, GetBoltId (..))
 import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph (..),
+                                                                    NodeName,
                                                                     emptyGraph,
+                                                                    relationName,
                                                                     relations,
                                                                     vertices)
 import           Database.Bolt.Extras.Graph.Internal.Class         (Extractable (..),
                                                                     Requestable (..),
                                                                     Returnable (..))
 import           Database.Bolt.Extras.Graph.Internal.Get           (NodeGetter,
-                                                                    NodeName,
                                                                     NodeResult,
                                                                     RelGetter,
                                                                     RelResult,
-                                                                    relationName)
+                                                                    requestGetters)
+import           Database.Bolt.Extras.Graph.Internal.Put           (PutNode, PutRelationship,
+                                                                    requestPut)
 import           NeatInterpolation                                 (text)
 
 -- | Type family used to perform requests to the Neo4j based on graphs.
@@ -63,10 +65,14 @@ class GraphQuery a where
   -- | Type of relationship entity, which will be extracted from result.
   type RelRes  a :: *
 
-  -- | 'MATCH' or 'MERGE' or 'CREATE'
-  clause :: Text
+  -- | How to convert requestable entities to text in the query.
+  requestEntities :: (Requestable (NodeName, NodeReq a),
+                      Requestable ((NodeName, NodeName), RelReq a))
+                  => [(NodeName, NodeReq a)]
+                  -> [((NodeName, NodeName), RelReq a)]
+                  -> (Text, [Text])
 
-  -- | Abstract function to form query for get request.
+  -- | Abstract function to form query for request.
   --
   formQuery :: (Requestable (NodeName, NodeReq a),
                 Requestable ((NodeName, NodeName), RelReq a),
@@ -75,27 +81,22 @@ class GraphQuery a where
             => [Text]
             -> Graph NodeName (NodeReq a) (RelReq a)
             -> Text
-  formQuery customConds graph = [text|$clause' $completeRequest
+  formQuery customConds graph = [text|$completeRequest
                                       $conditionsQ
-                                      RETURN $completeReturn|]
+                                      RETURN DISTINCT $completeReturn|]
     where
-      clause'          = clause @a
-
       vertices'        = toList (graph ^. vertices)
       relations'       = toList (graph ^. relations)
 
-      requestVertices  = request <$> vertices'
-      requestRelations = request <$> relations'
+      (completeRequest, reqConds) = requestEntities @a vertices' relations'
 
-      conditionsID     = catMaybes (fmap maybeBoltIdCond vertices' ++ fmap maybeBoltIdCond relations')
-      conditions       = customConds ++ conditionsID
-      conditionsQ      = if null conditions then "" else "WHERE " <> intercalate " AND " conditions
+      conditions       = reqConds ++ customConds
+      conditionsQ      = if Prelude.null conditions then "" else " WHERE " <> intercalate " AND " conditions
 
-      returnVertices   = return' <$> vertices'
-      returnRelations  = return' <$> relations'
+      returnVertices   = return' <$> filter isReturned' vertices'
+      returnRelations  = return' <$> filter isReturned' relations'
 
-      completeRequest  = intercalate ", " $ requestVertices ++ requestRelations
-      completeReturn   = intercalate ", " $ returnVertices  ++ returnRelations
+      completeReturn   = intercalate ", " $ Prelude.filter (not . T.null) $ returnVertices ++ returnRelations
 
   -- | Abstract function, which exctracts graph from records if nodes and relations can be extracted.
   --
@@ -124,7 +125,14 @@ class GraphQuery a where
               -> BoltActionT m [Graph NodeName (NodeRes a) (RelRes a)]
   makeRequest conds graph = do
       response <- query $ formQuery @a conds graph
-      extractGraphs @a (keys $ graph ^. vertices) (keys $ graph ^. relations) response
+      extractGraphs @a presentedVertices presentedRelations response
+    where
+      presentedVertices  = fmap fst . filter isReturned' . toList $ graph ^. vertices
+      presentedRelations = fmap fst . filter isReturned' . toList $ graph ^. relations
+
+---------------------------------------------------------------------------------------
+-- GET --
+---------------------------------------------------------------------------------------
 
 -- | Get request with result in Aeson format.
 -- Easy way to show result graphs.
@@ -141,14 +149,29 @@ instance GraphQuery GetRequestA where
   type RelReq  GetRequestA = RelGetter
   type NodeRes GetRequestA = NodeResult
   type RelRes  GetRequestA = RelResult
-  clause                   = "MATCH"
+  requestEntities          = requestGetters
 
 instance GraphQuery GetRequestB where
   type NodeReq GetRequestB = NodeGetter
   type RelReq  GetRequestB = RelGetter
   type NodeRes GetRequestB = Node
   type RelRes  GetRequestB = URelationship
-  clause                   = "MATCH"
+  requestEntities          = requestGetters
+
+---------------------------------------------------------------------------------------
+-- PUT --
+---------------------------------------------------------------------------------------
+
+-- | Put request in Bolt format with 'BoltId's of uploaded entities as result.
+--
+data PutRequestB = PutRequestB
+
+instance GraphQuery PutRequestB where
+  type NodeReq PutRequestB = PutNode
+  type RelReq  PutRequestB = PutRelationship
+  type NodeRes PutRequestB = BoltId
+  type RelRes  PutRequestB = BoltId
+  requestEntities          = requestPut
 
 -- | Helper function to merge graphs of results, i.e.
 -- if you requested graph A->B->C

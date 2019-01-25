@@ -1,6 +1,8 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Database.Bolt.Extras.Graph.Internal.Put
   (
@@ -8,31 +10,33 @@ module Database.Bolt.Extras.Graph.Internal.Put
   , PutRelationship (..)
   , GraphPutRequest
   , GraphPutResponse
-  , putNode
-  , putRelationship
-  , putGraph
+  , requestPut
   ) where
 
-import           Control.Monad                                     (forM)
-import           Control.Monad.IO.Class                            (MonadIO)
-import           Data.Map.Strict                                   (mapWithKey,
-                                                                    toList, (!))
-import qualified Data.Map.Strict                                   as M (map)
-import qualified Data.Text                                         as T (Text,
-                                                                         pack)
-import           Database.Bolt                                     (BoltActionT,
-                                                                    Node (..),
-                                                                    RecordValue (..),
+import           Data.List                                         (foldl')
+import           Data.Map.Strict                                   (toList, (!))
+import           Data.Monoid                                       ((<>))
+import           Data.Text                                         (Text,
+                                                                    intercalate,
+                                                                    pack)
+import           Database.Bolt                                     (Node (..), RecordValue (..),
                                                                     URelationship (..),
                                                                     Value (..),
-                                                                    at, exact,
-                                                                    query)
+                                                                    exact)
 import           Database.Bolt.Extras                              (BoltId, ToCypher (..),
                                                                     fromInt)
-import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph (..))
+import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph (..),
+                                                                    NodeName,
+                                                                    relationName)
+import           Database.Bolt.Extras.Graph.Internal.Class         (Extractable (..),
+                                                                    Requestable (..),
+                                                                    Returnable (..))
 import           NeatInterpolation                                 (text)
 
-type NodeName = T.Text
+------------------------------------------------------------------------------------------------
+-- REQUEST --
+------------------------------------------------------------------------------------------------
+-- | BOLT FORMAT
 
 -- | 'PutNode' is the wrapper for 'Node' where we can specify if we want to merge or create it.
 --
@@ -44,6 +48,78 @@ data PutNode = BoltId BoltId | MergeN Node | CreateN Node
 data PutRelationship = MergeR URelationship | CreateR URelationship
   deriving (Show)
 
+instance Requestable (NodeName, PutNode) where
+  request (name, BoltId boltId) = let showBoltId = pack . show $ boltId
+                                  in [text|MATCH ($name) WHERE ID($name) = $showBoltId|]
+  request (name, MergeN node)   = requestNode "MERGE"  name node
+  request (name, CreateN node)  = requestNode "CREATE" name node
+
+requestNode :: Text -> NodeName -> Node -> Text
+requestNode q name Node{..} = [text|$q ($name $labelsQ {$propsQ})|]
+  where
+    labelsQ = toCypher labels
+    propsQ  = toCypher . filter ((/= N ()) . snd) . toList $ nodeProps
+
+instance Requestable ((NodeName, NodeName), PutRelationship) where
+  request (names, MergeR urel)  = requestURelationship "MERGE" names urel
+  request (names, CreateR urel) = requestURelationship "CREATE" names urel
+
+requestURelationship :: Text -> (NodeName, NodeName) -> URelationship -> Text
+requestURelationship q (stName, enName) URelationship{..} =
+    [text|$q ($stName)-[$name $labelQ {$propsQ}]->($enName)|]
+  where
+    name   = relationName (stName, enName)
+    labelQ = toCypher urelType
+    propsQ = toCypher . toList $ urelProps
+
+-- | Takes all 'PutNode's and 'PutRelationship's
+-- and write them to single query to request.
+-- Here "WITH" is used, because you cannot perform
+-- "match", "merge" or "create" at the same query.
+requestPut :: [(NodeName, PutNode)]
+           -> [((NodeName, NodeName), PutRelationship)]
+           -> (Text, [Text])
+requestPut pns prs = (fst fullRequest, [])
+  where
+    foldStepN :: (Text, [NodeName]) -> (NodeName, PutNode) -> (Text, [NodeName])
+    foldStepN accum pn@(name, _) = foldStep accum name pn
+
+    foldStepR :: (Text, [NodeName]) -> ((NodeName, NodeName), PutRelationship) -> (Text, [NodeName])
+    foldStepR accum pr@(names, _) = foldStep accum (relationName names) pr
+
+    foldStep :: Requestable a => (Text, [NodeName]) -> NodeName -> a -> (Text, [NodeName])
+    foldStep (currentQuery, names) name put =
+        (currentQuery <> request put <> " WITH " <> intercalate ", " updNames <> " ", updNames)
+      where
+        updNames = name : names
+
+    requestNodes = foldl' foldStepN ("", []) pns
+    fullRequest  = foldl' foldStepR requestNodes prs
+
+instance Returnable (NodeName, PutNode) where
+  -- always return all nodes
+  isReturned' _     = True
+  return' (name, _) = [text|ID($name) AS $name|]
+
+instance Returnable ((NodeName, NodeName), PutRelationship) where
+  -- always return all relations
+  isReturned' _      = True
+  return' (names, _) = let name = relationName names
+                       in [text|ID($name) AS $name|]
+
+------------------------------------------------------------------------------------------------
+
+----------------------------------------------------------
+-- RESULT --
+----------------------------------------------------------
+
+instance Extractable BoltId where
+  extract name = mapM (fmap fromInt . exact . (! name))
+
+----------------------------------------------------------
+-- GRAPH TYPES --
+----------------------------------------------------------
+
 -- | The graph of 'Node's with specified uploading type and 'URelationship's.
 --
 type GraphPutRequest = Graph NodeName PutNode PutRelationship
@@ -52,74 +128,3 @@ type GraphPutRequest = Graph NodeName PutNode PutRelationship
 -- which we get after putting 'GraphPutRequest'.
 --
 type GraphPutResponse = Graph NodeName BoltId BoltId
-
--- | For given @Node _ labels nodeProps@ makes query MERGE or CREATE depending
--- on the type of 'PutNode' and returns 'BoltId' of the loaded 'Node'.
--- If we already know 'BoltId' of the 'Node' with such parameters, this function does nothing.
---
--- Potentially, if you MERGE some 'Node' and its labels and props are occured in
--- several 'Node's, then the result can be not one but several 'Node's,
--- so the result of this function will be a list of corresponding 'BoltId's.
---
-putNode :: (MonadIO m) => PutNode -> BoltActionT m [BoltId]
-putNode ut = case ut of
-    (BoltId bId)   -> pure [bId]
-    (MergeN node)  -> helper (T.pack "MERGE") node
-    (CreateN node) -> helper (T.pack "CREATE") node
-  where
-    helper :: (MonadIO m) => T.Text -> Node -> BoltActionT m [BoltId]
-    helper q node = do
-      let varQ  = "n"
-
-      let labelsQ = toCypher $ labels node
-      let propsQ  = toCypher . filter ((/= N ()) . snd) . toList $ nodeProps node
-
-      let getQuery = [text|$q ($varQ $labelsQ {$propsQ})
-                           RETURN ID($varQ) as $varQ|]
-
-      records <- query getQuery
-      forM records $ \record -> do
-        nodeIdentity' <- record `at` varQ >>= exact
-        pure $ fromInt nodeIdentity'
-
--- | Every relationship in Bolt protocol starts from one 'Node' and ends in anoter.
--- For given starting and ending 'Node's 'BoltId's, and for @URelationship  _ urelType urelProps@
--- this method makes MERGE query and then returns the corresponding 'BoltId'.
---
-putRelationship :: (MonadIO m) => BoltId -> PutRelationship -> BoltId -> BoltActionT m BoltId
-putRelationship start pr end = case pr of
-    (MergeR relationship)  -> helper (T.pack "MERGE") relationship
-    (CreateR relationship) -> helper (T.pack "CREATE") relationship
-  where
-    helper :: (MonadIO m) => T.Text -> URelationship -> BoltActionT m BoltId
-    helper q URelationship{..} = do
-        [record]      <- query putQuery
-        urelIdentity' <- record `at` varQ >>= exact
-        pure $ fromInt urelIdentity'
-      where
-        varQ   = "r"
-        labelQ = toCypher urelType
-        propsQ = toCypher . toList $ urelProps
-        startT = T.pack . show $ start
-        endT   = T.pack . show $ end
-
-        putQuery :: T.Text
-        putQuery = [text|MATCH (a), (b)
-                         WHERE ID(a) = $startT AND ID(b) = $endT
-                         $q (a)-[$varQ $labelQ {$propsQ}]->(b)
-                         RETURN ID($varQ) as $varQ|]
-
--- | Creates graph using given 'GraphPutRequest'.
--- If there were multiple choices while merging given _vertices, the first match is used for connection.
---
-putGraph :: (MonadIO m) => GraphPutRequest -> BoltActionT m GraphPutResponse
-putGraph requestGraph = do
-  let vertices' = _vertices requestGraph
-  let rels      = _relations requestGraph
-  nodes <- sequenceA $ M.map (fmap head . putNode) vertices'
-  edges <- sequenceA $
-          mapWithKey (\key v -> do
-              let stNode  = nodes ! fst key
-              let endNode = nodes ! snd key
-              putRelationship stNode v endNode) rels
-  return $ Graph nodes edges

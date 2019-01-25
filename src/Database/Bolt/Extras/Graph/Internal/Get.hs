@@ -6,19 +6,25 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE ViewPatterns        #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Database.Bolt.Extras.Graph.Internal.Get
   (
-    NodeName
   -- * Types for requesting nodes and relationships
-  , NodeGetter (..)
+    NodeGetter (..)
   , RelGetter (..)
   , GetterLike (..)
   , (#)
   , defaultNode
   , defaultRel
+  , defaultNodeReturn
+  , defaultNodeNotReturn
+  , defaultRelReturn
+  , defaultRelNotReturn
+  , requestGetters
+  , allProps
   -- * Types for extracting nodes and relationships
   , NodeResult (..)
   , RelResult (..)
@@ -48,7 +54,8 @@ import           Data.Map.Strict                                   as M (Map,
                                                                          insert,
                                                                          toList,
                                                                          (!))
-import           Data.Maybe                                        (fromJust,
+import           Data.Maybe                                        (catMaybes,
+                                                                    fromJust,
                                                                     isJust)
 import           Data.Monoid                                       ((<>))
 import           Data.Text                                         (Text, cons,
@@ -64,17 +71,17 @@ import           Database.Bolt.Extras                              (BoltId, GetB
                                                                     NodeLike (..),
                                                                     ToCypher (..),
                                                                     URelationLike (..))
-import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph)
+import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph,
+                                                                    NodeName,
+                                                                    relationName)
 import           Database.Bolt.Extras.Graph.Internal.Class         (Extractable (..),
                                                                     Requestable (..),
                                                                     Returnable (..))
 import           GHC.Generics                                      (Generic)
+import           Language.Haskell.TH.Syntax                        (Name,
+                                                                    nameBase)
 import           NeatInterpolation                                 (text)
 import           Text.Printf                                       (printf)
-
--- | Alias for node name
---
-type NodeName = Text
 
 ----------------------------------------------------------
 -- REQUEST --
@@ -82,62 +89,78 @@ type NodeName = Text
 
 -- | Helper to find 'Node's.
 --
-data NodeGetter = NodeGetter { ngboltId      :: Maybe BoltId
-                             , ngLabels      :: [Label]
-                             , ngProps       :: Map Text B.Value
-                             , ngReturnProps :: [Text]
+data NodeGetter = NodeGetter { ngboltId      :: Maybe BoltId     -- ^ known boltId
+                             , ngLabels      :: [Label]          -- ^ known labels
+                             , ngProps       :: Map Text B.Value -- ^ known properties
+                             , ngReturnProps :: [Text]           -- ^ names of properties to return
+                             , ngIsReturned  :: Bool             -- ^ whether return this node or not
                              }
   deriving (Show, Eq)
 
 -- | Helper to find 'URelationship's.
 --
-data RelGetter = RelGetter { rgboltId      :: Maybe BoltId
-                           , rgLabel       :: Maybe Label
-                           , rgProps       :: Map Text B.Value
-                           , rgReturnProps :: [Text]
+data RelGetter = RelGetter { rgboltId      :: Maybe BoltId     -- ^ known boltId
+                           , rgLabel       :: Maybe Label      -- ^ known labels
+                           , rgProps       :: Map Text B.Value -- ^ known properties
+                           , rgReturnProps :: [Text]           -- ^ names of properties to return
+                           , rgIsReturned  :: Bool             -- ^ whether return this relation or not
                            }
   deriving (Show, Eq)
 
 (#) :: a -> (a -> b) -> b
 (#) = (&)
 
-defaultNode :: NodeGetter
+defaultNode :: Bool -> NodeGetter
 defaultNode = NodeGetter Nothing [] (fromList []) []
 
-defaultRel :: RelGetter
+defaultRel :: Bool -> RelGetter
 defaultRel = RelGetter Nothing Nothing (fromList []) []
+
+defaultNodeReturn :: NodeGetter
+defaultNodeReturn = defaultNode True
+
+defaultNodeNotReturn :: NodeGetter
+defaultNodeNotReturn = defaultNode False
+
+defaultRelReturn :: RelGetter
+defaultRelReturn = defaultRel True
+
+defaultRelNotReturn :: RelGetter
+defaultRelNotReturn = defaultRel False
 
 -- | Helper to work with Getters.
 --
 class GetterLike a where
-  withBoltId :: BoltId          -> a -> a
-  withLabel  :: Label           -> a -> a
-  withProp   :: (Text, B.Value) -> a -> a
-  withReturn :: [Text]          -> a -> a
+    withBoltId :: BoltId          -> a -> a -- ^ set known boltId
+    withLabel  :: Label           -> a -> a -- ^ set known label
+    withLabelQ :: Name            -> a -> a -- ^ set known label as 'Name'
+    withProp   :: (Text, B.Value) -> a -> a -- ^ add known property
+    withReturn :: [Text]          -> a -> a -- ^ add list of properties to return
+    isReturned ::                    a -> a -- ^ set that current node should be returned
 
 instance GetterLike NodeGetter where
-    withBoltId boltId ng = ng { ngboltId      = Just boltId }
-    withLabel  lbl    ng = ng { ngLabels      = lbl : ngLabels ng }
-    withProp (pk, pv) ng = ng { ngProps       = insert pk pv (ngProps ng) }
-    withReturn props  ng = ng { ngReturnProps = ngReturnProps ng ++ props }
+    withBoltId boltId ng = ng { ngboltId       = Just boltId }
+    withLabel  lbl    ng = ng { ngLabels       = lbl : ngLabels ng }
+    withLabelQ lblQ      = withLabel (pack . nameBase $ lblQ)
+    withProp (pk, pv) ng = ng { ngProps        = insert pk pv (ngProps ng) }
+    withReturn props  ng = ng { ngReturnProps  = ngReturnProps ng ++ props }
+    isReturned        ng = ng { ngIsReturned   = True }
 
 instance GetterLike RelGetter where
-    withBoltId boltId rg = rg { rgboltId      = Just boltId }
-    withLabel  lbl    rg = rg { rgLabel       = Just lbl    }
-    withProp (pk, pv) rg = rg { rgProps       = insert pk pv (rgProps rg) }
-    withReturn props  rg = rg { rgReturnProps = rgReturnProps rg ++ props }
+    withBoltId boltId rg = rg { rgboltId       = Just boltId }
+    withLabel  lbl    rg = rg { rgLabel        = Just lbl    }
+    withLabelQ lblQ      = withLabel (pack . nameBase $ lblQ)
+    withProp (pk, pv) rg = rg { rgProps        = insert pk pv (rgProps rg) }
+    withReturn props  rg = rg { rgReturnProps  = rgReturnProps rg ++ props }
+    isReturned        rg = rg { rgIsReturned   = True }
 
 instance Requestable (NodeName, NodeGetter) where
-  maybeBoltIdCond (name, ng) = pack . printf "ID(%s)=%d" name <$> ngboltId ng
-
   request (name, ng) = [text|($name $labels $propsQ)|]
     where
       labels = toCypher . ngLabels $ ng
       propsQ = "{" <> (toCypher . toList . ngProps $ ng) <> "}"
 
 instance Requestable ((NodeName, NodeName), RelGetter) where
-  maybeBoltIdCond (names, rg) = pack . printf "ID(%s)=%d" (relationName names) <$> rgboltId rg
-
   request ((stName, enName), rg) = [text|($stName)-[$name $typeQ $propsQ]-($enName)|]
     where
       name   = relationName (stName, enName)
@@ -145,34 +168,56 @@ instance Requestable ((NodeName, NodeName), RelGetter) where
       propsQ = "{" <> (toCypher . toList . rgProps $ rg) <> "}"
 
 instance Returnable (NodeName, NodeGetter) where
-  return' (name, ng) = let showProps = showRetProps name $ ngReturnProps ng
-                          in [text|{ id: id($name),
-                                     labels: labels($name),
-                                     props: $showProps
-                                   } as $name
-                              |]
+  isReturned' (_, ng) = ngIsReturned ng
+
+  return' (name, ng)  = let showProps = showRetProps name $ ngReturnProps ng
+                        in [text|{ id: id($name),
+                                   labels: labels($name),
+                                   props: $showProps
+                                 } as $name
+                           |]
 
 instance Returnable ((NodeName, NodeName), RelGetter) where
+  isReturned' (_, rg)            = rgIsReturned rg
+
   return' ((stName, enName), rg) = let name      = relationName (stName, enName)
                                        showProps = showRetProps name $ rgReturnProps rg
-                                      in [text|{ id: id($name),
-                                                 label: type($name),
-                                                 props: $showProps
-                                               } as $name
-                                          |]
+                                   in [text|{ id: id($name),
+                                              label: type($name),
+                                              props: $showProps
+                                            } as $name
+                                      |]
 
--- | Creates relationship name from the names of its start and end nodes
--- in the way `<startNodeName>0<endNodeName>`.
-relationName :: (NodeName, NodeName) -> Text
-relationName (st, en) = st <> "0" <> en
+allProps :: [Text]
+allProps = ["*"]
 
 showRetProps :: Text -> [Text] -> Text
-showRetProps name []    = "properties(" <> name <> ")"
+showRetProps name []    = name <> "{}"
+showRetProps name ["*"] = "properties(" <> name <> ")"
 showRetProps name props = name <> "{" <> intercalate ", " (cons '.' <$> props) <> "}"
+
+-- | Takes all node getters and relationship getters
+-- and write them to single query to request.
+-- Also return conditions on known boltId-s.
+--
+requestGetters :: [(NodeName, NodeGetter)]
+               -> [((NodeName, NodeName), RelGetter)]
+               -> (Text, [Text])
+requestGetters ngs rgs = ("MATCH " <> intercalate ", " (fmap request rgs ++ fmap request ngs), conditionsID)
+  where
+    boltIdCondN :: (NodeName, NodeGetter) -> Maybe Text
+    boltIdCondN (name, ng) = pack . printf "ID(%s)=%d" name <$> ngboltId ng
+
+    boltIdCondR :: ((NodeName, NodeName), RelGetter) -> Maybe Text
+    boltIdCondR (names, rg) = pack . printf "ID(%s)=%d" (relationName names) <$> rgboltId rg
+
+    conditionsID  = catMaybes (fmap boltIdCondN ngs ++ fmap boltIdCondR rgs)
 
 ----------------------------------------------------------
 -- RESULT --
 ----------------------------------------------------------
+
+-- | AESON FORMAT
 
 -- | Result for node in the Aeson like format.
 --
@@ -216,13 +261,16 @@ instance Extractable NodeResult where
 instance Extractable RelResult where
   extract = extractFromJSON
 
+----------------------------------------------------------
+-- | BOLT FORMAT
+
 instance Extractable Node where
   extract :: forall m. MonadIO m => Text -> [Record] -> BoltActionT m [Node]
-  extract t rec = (toNode <$>) <$> (extractFromJSON t rec :: BoltActionT m [NodeResult])
+  extract t rec = fmap toNode <$> extractFromJSON @ _ @ NodeResult t rec
 
 instance Extractable URelationship where
   extract :: forall m. MonadIO m => Text -> [Record] -> BoltActionT m [URelationship]
-  extract t rec = (toURelation <$>) <$> (extractFromJSON t rec :: BoltActionT m [RelResult])
+  extract t rec = fmap toURelation <$> extractFromJSON @ _ @ RelResult t rec
 
 extractFromJSON :: (MonadIO m, FromJSON a) => Text -> [Record] -> BoltActionT m [a]
 extractFromJSON var = pure . fmap (\r -> case fromJSON (toJSON (r ! var)) of
@@ -238,8 +286,8 @@ instance NodeLike NodeResult where
   fromNode Node{..}     = NodeResult nodeIdentity labels     (toJSON   <$> nodeProps)
 
 instance URelationLike RelResult where
-  toURelation RelResult{..}       = URelationship rresId rresLabel  (fromJust <$> M.filter isJust (fromJSONM <$> rresProps))
-  fromURelation URelationship{..} = RelResult urelIdentity urelType (toJSON   <$> urelProps)
+  toURelation RelResult{..}       = URelationship rresId       rresLabel (fromJust <$> M.filter isJust (fromJSONM <$> rresProps))
+  fromURelation URelationship{..} = RelResult     urelIdentity urelType  (toJSON   <$> urelProps)
 
 ----------------------------------------------------------
 -- GRAPH TYPES --
