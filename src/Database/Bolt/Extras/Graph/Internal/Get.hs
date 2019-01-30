@@ -6,7 +6,6 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE ViewPatterns        #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
@@ -31,10 +30,18 @@ module Database.Bolt.Extras.Graph.Internal.Get
   , relationName
   -- * Graph types
   , GraphGetRequest
-  , GraphGetResponseA
-  , GraphGetResponseB
+  , GraphGetResponse
+  -- * Helpers to extract entities from result graph
+  , extractNode
+  , extractRelation
+  , extractNodeId
+  , extractRelationId
+  , extractNodeAeson
+  , extractRelationAeson
   ) where
 
+import           Control.Lens                                      (at, non, to,
+                                                                    (^.))
 import           Control.Monad.IO.Class                            (MonadIO)
 import           Data.Aeson                                        as A (FromJSON (..),
                                                                          Result (..),
@@ -60,7 +67,8 @@ import           Data.Maybe                                        (catMaybes,
 import           Data.Monoid                                       ((<>))
 import           Data.Text                                         (Text, cons,
                                                                     intercalate,
-                                                                    pack)
+                                                                    pack,
+                                                                    unpack)
 import           Database.Bolt                                     as B (BoltActionT,
                                                                          Node (..),
                                                                          Record,
@@ -73,7 +81,9 @@ import           Database.Bolt.Extras                              (BoltId, GetB
                                                                     URelationLike (..))
 import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph,
                                                                     NodeName,
-                                                                    relationName)
+                                                                    relationName,
+                                                                    relations,
+                                                                    vertices)
 import           Database.Bolt.Extras.Graph.Internal.Class         (Extractable (..),
                                                                     Requestable (..),
                                                                     Returnable (..))
@@ -217,8 +227,6 @@ requestGetters ngs rgs = ("MATCH " <> intercalate ", " (fmap request rgs ++ fmap
 -- RESULT --
 ----------------------------------------------------------
 
--- | AESON FORMAT
-
 -- | Result for node in the Aeson like format.
 --
 data NodeResult = NodeResult { nresId     :: BoltId
@@ -261,17 +269,6 @@ instance Extractable NodeResult where
 instance Extractable RelResult where
   extract = extractFromJSON
 
-----------------------------------------------------------
--- | BOLT FORMAT
-
-instance Extractable Node where
-  extract :: forall m. MonadIO m => Text -> [Record] -> BoltActionT m [Node]
-  extract t rec = fmap toNode <$> extractFromJSON @ _ @ NodeResult t rec
-
-instance Extractable URelationship where
-  extract :: forall m. MonadIO m => Text -> [Record] -> BoltActionT m [URelationship]
-  extract t rec = fmap toURelation <$> extractFromJSON @ _ @ RelResult t rec
-
 extractFromJSON :: (MonadIO m, FromJSON a) => Text -> [Record] -> BoltActionT m [a]
 extractFromJSON var = pure . fmap (\r -> case fromJSON (toJSON (r ! var)) of
                                         Success parsed -> parsed
@@ -290,19 +287,46 @@ instance URelationLike RelResult where
   fromURelation URelationship{..} = RelResult     urelIdentity urelType  (toJSON   <$> urelProps)
 
 ----------------------------------------------------------
--- GRAPH TYPES --
+-- GRAPH --
 ----------------------------------------------------------
 
 -- | The combinations of 'Getter's to load graph from the database.
 --
 type GraphGetRequest = Graph NodeName NodeGetter RelGetter
 
--- | The graph of 'Node's and 'URelationship's which we got from the database using 'GraphGetRequest',
--- converted to the Aeson Value like.
+-- | The graph of 'Node's and 'URelationship's which we got from the database using 'GraphGetRequest'.
 --
-type GraphGetResponseA = Graph NodeName NodeResult RelResult
+type GraphGetResponse = Graph NodeName NodeResult RelResult
 
--- | The graph of 'Node's and 'URelationship's which we got from the database using 'GraphGetRequest',
--- converted to the Bolt Value like.
---
-type GraphGetResponseB = Graph NodeName Node URelationship
+-- | Some helpers to extract entities from the result graph.
+
+extractNode :: NodeLike a => NodeName -> GraphGetResponse -> a
+extractNode var graph = graph ^. vertices . at var . non (errorForNode var) . to (fromNode . toNode)
+
+extractRelation :: URelationLike a => NodeName -> NodeName -> GraphGetResponse -> a
+extractRelation stVar enVar graph = graph ^. relations . at (stVar, enVar)
+                                  . non (errorForRelation stVar enVar)
+                                  . to (fromURelation . toURelation)
+
+extractNodeId :: NodeName -> GraphGetResponse -> BoltId
+extractNodeId var graph = graph ^. vertices . at var . non (errorForNode var) . to nresId
+
+extractRelationId :: NodeName -> NodeName -> GraphGetResponse -> BoltId
+extractRelationId stVar enVar graph = graph ^. relations . at (stVar, enVar)
+                                    . non (errorForRelation stVar enVar)
+                                    . to rresId
+
+extractNodeAeson :: NodeName -> GraphGetResponse -> NodeResult
+extractNodeAeson var graph = graph ^. vertices . at var . non (errorForNode var)
+
+extractRelationAeson :: NodeName -> NodeName -> GraphGetResponse -> RelResult
+extractRelationAeson stVar enVar graph = graph ^. relations . at (stVar, enVar)
+                                       . non (errorForRelation stVar enVar)
+
+errorForNode :: NodeName -> a
+errorForNode name = error . unpack $ "node with name " <> name <> " doesn't exist"
+
+errorForRelation :: NodeName -> NodeName -> a
+errorForRelation stName enName = error . unpack $ "relation between nodes " <>
+                                                  stName <> " and " <> enName <>
+                                                  " doesn't exist"

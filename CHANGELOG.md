@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.16] - 2019-02-01
+### Changed
+- Optimized query, easy way to extract entities from result graph.
+
 ## [0.0.0.15] - 2019-01-22
 ### Changed
 - Ability to choose whether to return entity or not in graphs.

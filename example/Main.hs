@@ -11,7 +11,6 @@ import           Control.Monad.State           (execState, modify)
 import           Data.Aeson                    (encode)
 import qualified Data.ByteString.Lazy.Char8    as B (putStrLn)
 import           Data.Default                  (def)
-import           Data.Map.Strict               ((!))
 import           Data.Text                     (Text)
 import           Database.Bolt                 (BoltActionT, BoltCfg (..),
                                                 Value (..), close, connect, run)
@@ -105,7 +104,7 @@ exampleGetGraphA = flip execState emptyGraph $
 --
 putGraph :: IO ()
 putGraph = do
-    putGraphR <- runQueryDB $ makeRequest @PutRequestB [] examplePutGraph
+    putGraphR <- runQueryDB $ makeRequest @PutRequest [] examplePutGraph
     putStrLn "Uploaded graph: "
     print putGraphR
 
@@ -113,8 +112,8 @@ putGraph = do
 --
 getGraphB :: IO ()
 getGraphB = do
-    getGraphsR                  <- runQueryDB $ makeRequest @GetRequestB [] exampleGetGraphB
-    let nodesA :: [ExampleNode] = fromNode . (! exNodeAVar) . _vertices <$> getGraphsR
+    getGraphsR                  <- runQueryDB $ makeRequest @GetRequest [] exampleGetGraphB
+    let nodesA :: [ExampleNode] = extractNode exNodeAVar <$> getGraphsR
     putStrLn "Downloaded graph and converted to Haskell object: "
     print nodesA
 
@@ -122,8 +121,8 @@ getGraphB = do
 --
 getGraphA :: IO ()
 getGraphA = do
-    getGraphsR <- runQueryDB $ makeRequest @GetRequestA [] exampleGetGraphA
-    let nodesA = (! exNodeAVar) . _vertices <$> getGraphsR
+    getGraphsR <- runQueryDB $ makeRequest @GetRequest [] exampleGetGraphA
+    let nodesA = extractNodeAeson exNodeAVar <$> getGraphsR
     putStrLn "Downloaded graph and converted to JSON: "
     B.putStrLn . encode $ nodesA
 

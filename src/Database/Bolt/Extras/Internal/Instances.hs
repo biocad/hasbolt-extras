@@ -11,9 +11,10 @@ import           Data.Aeson                          (FromJSON (..),
 import           Data.Aeson.Types                    (Parser)
 import           Data.Map.Strict                     (Map)
 import           Data.Text                           (Text)
-import           Database.Bolt                       (Value (..))
+import           Database.Bolt                       (Node, Value (..))
 import qualified Database.Bolt                       as DB (Structure)
 import           Database.Bolt.Extras.Internal.Types (FromValue (..),
+                                                      NodeLike (..),
                                                       ToValue (..))
 import           Database.Bolt.Extras.Utils          (currentLoc)
 import           GHC.Float                           (double2Float,
@@ -115,3 +116,7 @@ instance FromJSON Value where
             <|> L <$> (parseJSON v :: Parser [Value])
             <|> M <$> (parseJSON v :: Parser (Map Text Value))
             <|> error "Database.Bolt.Extras.Internal.Instances: could not convert from json Database.Bolt.Value"
+
+instance NodeLike Node where
+  toNode   = id
+  fromNode = id
