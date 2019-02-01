@@ -11,9 +11,8 @@
 module Database.Bolt.Extras.Graph.Internal.GraphQuery
   (
     GraphQuery (..)
-  , GetRequestA (..)
-  , GetRequestB (..)
-  , PutRequestB (..)
+  , GetRequest (..)
+  , PutRequest (..)
   , mergeGraphs
   ) where
 
@@ -30,9 +29,7 @@ import           Data.Text                                         as T (Text, i
                                                                          null,
                                                                          pack)
 import           Database.Bolt                                     (BoltActionT,
-                                                                    Node,
                                                                     Record,
-                                                                    URelationship,
                                                                     query)
 import           Database.Bolt.Extras                              (BoltId, GetBoltId (..))
 import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph (..),
@@ -83,10 +80,12 @@ class GraphQuery a where
             -> Text
   formQuery customConds graph = [text|$completeRequest
                                       $conditionsQ
-                                      RETURN DISTINCT $completeReturn|]
+                                      WITH DISTINCT $distinctVars
+                                      RETURN $completeReturn|]
     where
       vertices'        = toList (graph ^. vertices)
       relations'       = toList (graph ^. relations)
+      distinctVars     = intercalate ", " $ fmap fst vertices' ++ fmap (relationName . fst) relations'
 
       (completeRequest, reqConds) = requestEntities @a vertices' relations'
 
@@ -134,29 +133,16 @@ class GraphQuery a where
 -- GET --
 ---------------------------------------------------------------------------------------
 
--- | Get request with result in Aeson format.
--- Easy way to show result graphs.
+-- | Get request with graph result.
 --
-data GetRequestA = GetRequestA
+data GetRequest = GetRequest
 
--- | Get request with result in Bolt format.
--- Easy way to extract results and convert them to another entities (using 'fromNode').
---
-data GetRequestB = GetRequestB
-
-instance GraphQuery GetRequestA where
-  type NodeReq GetRequestA = NodeGetter
-  type RelReq  GetRequestA = RelGetter
-  type NodeRes GetRequestA = NodeResult
-  type RelRes  GetRequestA = RelResult
-  requestEntities          = requestGetters
-
-instance GraphQuery GetRequestB where
-  type NodeReq GetRequestB = NodeGetter
-  type RelReq  GetRequestB = RelGetter
-  type NodeRes GetRequestB = Node
-  type RelRes  GetRequestB = URelationship
-  requestEntities          = requestGetters
+instance GraphQuery GetRequest where
+  type NodeReq GetRequest = NodeGetter
+  type RelReq  GetRequest = RelGetter
+  type NodeRes GetRequest = NodeResult
+  type RelRes  GetRequest = RelResult
+  requestEntities         = requestGetters
 
 ---------------------------------------------------------------------------------------
 -- PUT --
@@ -164,13 +150,13 @@ instance GraphQuery GetRequestB where
 
 -- | Put request in Bolt format with 'BoltId's of uploaded entities as result.
 --
-data PutRequestB = PutRequestB
+data PutRequest = PutRequest
 
-instance GraphQuery PutRequestB where
-  type NodeReq PutRequestB = PutNode
-  type RelReq  PutRequestB = PutRelationship
-  type NodeRes PutRequestB = BoltId
-  type RelRes  PutRequestB = BoltId
+instance GraphQuery PutRequest where
+  type NodeReq PutRequest = PutNode
+  type RelReq  PutRequest = PutRelationship
+  type NodeRes PutRequest = BoltId
+  type RelRes  PutRequest = BoltId
   requestEntities          = requestPut
 
 -- | Helper function to merge graphs of results, i.e.
