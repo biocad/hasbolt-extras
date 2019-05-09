@@ -36,14 +36,20 @@ import           NeatInterpolation                                 (text)
 ------------------------------------------------------------------------------------------------
 -- REQUEST --
 ------------------------------------------------------------------------------------------------
--- | BOLT FORMAT
+--  BOLT FORMAT
 
 -- | 'PutNode' is the wrapper for 'Node' where we can specify if we want to merge or create it.
 --
-data PutNode = BoltId BoltId | MergeN Node | CreateN Node
+data PutNode
+  = BoltId BoltId -- ^ Describe existing node by its 'Database.Bolt.Extras.BoltId'. No new data will be inserted for this node.
+  | MergeN Node   -- ^ Merge the 'Node' with existing node in the DB. Corresponds to @MERGE@ Cypher operator.
+  | CreateN Node  -- ^ Create an entirely new node. Corresponds to @CREATE@ Cypher operator.
   deriving (Show)
 
--- | 'PutRelationship' is the wrapper for 'Relationship' where we can specify if we want to merge or create it.
+-- | 'PutRelationship' is the wrapper for 'URelationship' where we can specify
+-- if we want to merge or create it.
+--
+-- Meaning of constructors is the same as for 'PutNode'.
 --
 data PutRelationship = MergeR URelationship | CreateR URelationship
   deriving (Show)
@@ -124,7 +130,7 @@ instance Extractable BoltId where
 --
 type GraphPutRequest = Graph NodeName PutNode PutRelationship
 
--- | The graph of 'BoltId's corresponding to the nodes and relationships
+-- | The graph of 'Database.Bolt.Extras.BoltId's corresponding to the nodes and relationships
 -- which we get after putting 'GraphPutRequest'.
 --
 type GraphPutResponse = Graph NodeName BoltId BoltId

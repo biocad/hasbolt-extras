@@ -50,19 +50,19 @@ import           Database.Bolt.Extras.Graph.Internal.Put           (PutNode, Put
                                                                     requestPut)
 import           NeatInterpolation                                 (text)
 
--- | Type family used to perform requests to the Neo4j based on graphs.
+-- | Type class used to perform requests to the Neo4j based on graphs.
 --
 class GraphQuery a where
-  -- | Type of entity, describing node for request.
+  -- | Type of entity describing node for request.
   type NodeReq a :: *
-  -- | Type of entity, describing relationship for request.
+  -- | Type of entity describing relationship for request.
   type RelReq  a :: *
-  -- | Type of node entity, which will be extracted from result.
+  -- | Type of node entity which will be extracted from result.
   type NodeRes a :: *
-  -- | Type of relationship entity, which will be extracted from result.
+  -- | Type of relationship entity which will be extracted from result.
   type RelRes  a :: *
 
-  -- | How to convert requestable entities to text in the query.
+  -- | Convert requestable entities to text in the query.
   requestEntities :: (Requestable (NodeName, NodeReq a),
                       Requestable ((NodeName, NodeName), RelReq a))
                   => [(NodeName, NodeReq a)]
@@ -75,9 +75,9 @@ class GraphQuery a where
                 Requestable ((NodeName, NodeName), RelReq a),
                 Returnable (NodeName, NodeReq a),
                 Returnable ((NodeName, NodeName), RelReq a))
-            => [Text]
-            -> Graph NodeName (NodeReq a) (RelReq a)
-            -> Text
+            => [Text]                                -- ^ Custom conditions that will be added to @WHERE@ block.
+            -> Graph NodeName (NodeReq a) (RelReq a) -- ^ Request graph template.
+            -> Text                                  -- ^ Cypher query as text.
   formQuery customConds graph = [text|$completeRequest
                                       $conditionsQ
                                       WITH DISTINCT $distinctVars
@@ -97,7 +97,7 @@ class GraphQuery a where
 
       completeReturn   = intercalate ", " $ Prelude.filter (not . T.null) $ returnVertices ++ returnRelations
 
-  -- | Abstract function, which exctracts graph from records if nodes and relations can be extracted.
+  -- | Abstract function which exctracts graph from records if nodes and relations can be extracted.
   --
   extractGraphs :: (Extractable (NodeRes a), Extractable (RelRes a), MonadIO m)
                 => [NodeName]
@@ -160,24 +160,31 @@ instance GraphQuery PutRequest where
   requestEntities          = requestPut
 
 -- | Helper function to merge graphs of results, i.e.
--- if you requested graph A->B->C
--- and in the database there were two B entities connected to the same entity A
--- and four C entities, connected to the same two entities B,
--- cypher query will return four graphs, which satisfy this path,
--- despite the fact that A was presented only once in the database
--- and B was presented only two times in the database.
+-- if you requested graph @A -> B -> C@
+-- and in the database there were two @B@ entities connected to the same entity @A@
+-- and four @C@ entities connected to the same two entities @B@,
+-- Cypher query will return four graphs which satisfy this path,
+-- despite the fact that @A@ was present only once in the database
+-- and @B@ was present only two times in the database.
+--
 -- This function will merge these four graphs in one
--- and return nodes by node names with suffixes equal to their BoltId-s.
+-- and return nodes by node names with suffixes equal to their 'BoltId's.
 --
 -- For example, if there were four graphs:
--- nodes: [A (boltId = 0), B (boltId = 1), C (boltId = 3)], relations: [A -> B, B -> C],
--- nodes: [A (boltId = 0), B (boltId = 1), C (boltId = 4)], relations: [A -> B, B -> C],
--- nodes: [A (boltId = 0), B (boltId = 2), C (boltId = 5)], relations: [A -> B, B -> C],
--- nodes: [A (boltId = 0), B (boltId = 2), C (boltId = 6)], relations: [A -> B, B -> C],
+--
+-- @
+--   nodes: [A (boltId = 0), B (boltId = 1), C (boltId = 3)], relations: [A -> B, B -> C];
+--   nodes: [A (boltId = 0), B (boltId = 1), C (boltId = 4)], relations: [A -> B, B -> C];
+--   nodes: [A (boltId = 0), B (boltId = 2), C (boltId = 5)], relations: [A -> B, B -> C];
+--   nodes: [A (boltId = 0), B (boltId = 2), C (boltId = 6)], relations: [A -> B, B -> C].
+-- @
 -- this function will merge them into new graph:
--- nodes: [A0 (boltId = 0), B1 (boltId = 1), B2 (boltId = 2),
---         C3 (boltId = 3), C4 (boltId = 4), C5 (boltId = 5), C6 (boltId = 6)],
--- relations: [A0 -> B1, A0 -> B2, B1 -> C3, B1 -> C4, B2 -> C5, B2 -> C6].
+--
+-- @
+--   nodes: [A0 (boltId = 0), B1 (boltId = 1), B2 (boltId = 2),
+--           C3 (boltId = 3), C4 (boltId = 4), C5 (boltId = 5), C6 (boltId = 6)],
+--   relations: [A0 -> B1, A0 -> B2, B1 -> C3, B1 -> C4, B2 -> C5, B2 -> C6].
+-- @
 --
 mergeGraphs :: GetBoltId a => [Graph NodeName a b] -> Graph NodeName a b
 mergeGraphs graphs = foldl' mergeGraph emptyGraph (updateGraph <$> graphs)

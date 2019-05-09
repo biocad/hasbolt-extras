@@ -99,54 +99,64 @@ import           Text.Printf                                       (printf)
 
 -- | Helper to find 'Node's.
 --
-data NodeGetter = NodeGetter { ngboltId      :: Maybe BoltId     -- ^ known boltId
+data NodeGetter = NodeGetter { ngboltId      :: Maybe BoltId     -- ^ known 'BoltId'
                              , ngLabels      :: [Label]          -- ^ known labels
                              , ngProps       :: Map Text B.Value -- ^ known properties
                              , ngReturnProps :: [Text]           -- ^ names of properties to return
-                             , ngIsReturned  :: Bool             -- ^ whether return this node or not
+                             , ngIsReturned  :: Bool             -- ^ whether to return this node or not
                              }
   deriving (Show, Eq)
 
 -- | Helper to find 'URelationship's.
 --
-data RelGetter = RelGetter { rgboltId      :: Maybe BoltId     -- ^ known boltId
+data RelGetter = RelGetter { rgboltId      :: Maybe BoltId     -- ^ known 'BoltId'
                            , rgLabel       :: Maybe Label      -- ^ known labels
                            , rgProps       :: Map Text B.Value -- ^ known properties
                            , rgReturnProps :: [Text]           -- ^ names of properties to return
-                           , rgIsReturned  :: Bool             -- ^ whether return this relation or not
+                           , rgIsReturned  :: Bool             -- ^ whether to return this relation or not
                            }
   deriving (Show, Eq)
 
+-- | A synonym for '&'. Kept for historical reasons.
 (#) :: a -> (a -> b) -> b
 (#) = (&)
 
-defaultNode :: Bool -> NodeGetter
+-- | 'NodeGetter' that matches any node.
+defaultNode :: Bool       -- ^ Whether to return the node
+            -> NodeGetter
 defaultNode = NodeGetter Nothing [] (fromList []) []
 
-defaultRel :: Bool -> RelGetter
+-- | 'RelGetter' that matches any relation.
+defaultRel :: Bool      -- ^ Whether to return the relation
+           -> RelGetter
 defaultRel = RelGetter Nothing Nothing (fromList []) []
 
+-- | 'NodeGetter' that matches any node and returns it.
 defaultNodeReturn :: NodeGetter
 defaultNodeReturn = defaultNode True
 
+-- | 'NodeGetter' that matches any node and does not return it.
 defaultNodeNotReturn :: NodeGetter
 defaultNodeNotReturn = defaultNode False
 
+-- | 'RelGetter' that matches any relation and returns it.
 defaultRelReturn :: RelGetter
 defaultRelReturn = defaultRel True
 
+
+-- | 'RelGetter' that matches any relation and does not return it.
 defaultRelNotReturn :: RelGetter
 defaultRelNotReturn = defaultRel False
 
--- | Helper to work with Getters.
+-- | Endomorphisms to set up 'NodeGetter' and 'RelGetter'.
 --
 class GetterLike a where
-    withBoltId :: BoltId          -> a -> a -- ^ set known boltId
+    withBoltId :: BoltId          -> a -> a -- ^ set known 'BoltId'
     withLabel  :: Label           -> a -> a -- ^ set known label
-    withLabelQ :: Name            -> a -> a -- ^ set known label as 'Name'
+    withLabelQ :: Name            -> a -> a -- ^ set known label as TemplateHaskell 'Name'
     withProp   :: (Text, B.Value) -> a -> a -- ^ add known property
     withReturn :: [Text]          -> a -> a -- ^ add list of properties to return
-    isReturned ::                    a -> a -- ^ set that current node should be returned
+    isReturned ::                    a -> a -- ^ set that entity should be returned
 
 instance GetterLike NodeGetter where
     withBoltId boltId ng = ng { ngboltId       = Just boltId }
@@ -198,6 +208,7 @@ instance Returnable ((NodeName, NodeName), RelGetter) where
                                             } as $name
                                       |]
 
+-- | Return all properties of a node or relation. To be used with 'withReturn'.
 allProps :: [Text]
 allProps = ["*"]
 
@@ -227,7 +238,7 @@ requestGetters ngs rgs = ("MATCH " <> intercalate ", " (fmap request rgs ++ fmap
 -- RESULT --
 ----------------------------------------------------------
 
--- | Result for node in the Aeson like format.
+-- | Result for node where properties are represented as @aeson@ 'A.Value'.
 --
 data NodeResult = NodeResult { nresId     :: BoltId
                              , nresLabels :: [Label]
@@ -235,7 +246,7 @@ data NodeResult = NodeResult { nresId     :: BoltId
                              }
   deriving (Show, Eq, Generic)
 
--- | Result for relationship in the Aeson like format.
+-- | Result for relation where properties are represented as @aeson@ 'A.Value'.
 --
 data RelResult = RelResult { rresId    :: BoltId
                            , rresLabel :: Label
@@ -290,7 +301,7 @@ instance URelationLike RelResult where
 -- GRAPH --
 ----------------------------------------------------------
 
--- | The combinations of 'Getter's to load graph from the database.
+-- | The combinations of getters to load graph from the database.
 --
 type GraphGetRequest = Graph NodeName NodeGetter RelGetter
 
@@ -298,27 +309,33 @@ type GraphGetRequest = Graph NodeName NodeGetter RelGetter
 --
 type GraphGetResponse = Graph NodeName NodeResult RelResult
 
--- | Some helpers to extract entities from the result graph.
 
+-- | Extract a node by its name from 'GraphGetResponse' and convert it to user type
+-- with 'fromNode'.
 extractNode :: NodeLike a => NodeName -> GraphGetResponse -> a
 extractNode var graph = graph ^. vertices . at var . non (errorForNode var) . to (fromNode . toNode)
 
+-- | Extract a relation by name of it start and end nodes and convert to user type with 'fromURelation'.
 extractRelation :: URelationLike a => NodeName -> NodeName -> GraphGetResponse -> a
 extractRelation stVar enVar graph = graph ^. relations . at (stVar, enVar)
                                   . non (errorForRelation stVar enVar)
                                   . to (fromURelation . toURelation)
 
+-- | Extract just node's 'BoltId'.
 extractNodeId :: NodeName -> GraphGetResponse -> BoltId
 extractNodeId var graph = graph ^. vertices . at var . non (errorForNode var) . to nresId
 
+-- | Extract just relation's 'BoltId'.
 extractRelationId :: NodeName -> NodeName -> GraphGetResponse -> BoltId
 extractRelationId stVar enVar graph = graph ^. relations . at (stVar, enVar)
                                     . non (errorForRelation stVar enVar)
                                     . to rresId
 
+-- | Extract 'NodeResult'.
 extractNodeAeson :: NodeName -> GraphGetResponse -> NodeResult
 extractNodeAeson var graph = graph ^. vertices . at var . non (errorForNode var)
 
+-- | Extract 'RelResult'.
 extractRelationAeson :: NodeName -> NodeName -> GraphGetResponse -> RelResult
 extractRelationAeson stVar enVar graph = graph ^. relations . at (stVar, enVar)
                                        . non (errorForRelation stVar enVar)
