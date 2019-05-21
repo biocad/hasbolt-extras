@@ -4,7 +4,7 @@ This module defines everything needed to make template graph requests to Neo4j.
 
 There are two types of queries that you can run: queries that return something from the
 database (Get) and queries that save new data to it (Put). Both types are abstracted via type class
-'GraphQuery'. Most of the type you will need only its 'makeRequest' method.
+'GraphQuery'. Most of the time you will need only its 'makeRequest' method.
 
 Get and Put queries are simply two instances of 'GraphQuery', differentiated by empty data
 types 'GetRequest' and 'PutRequest'. This means that you will have to use @TypeApplications@
@@ -18,7 +18,7 @@ Endomorphisms can be conveniently applied using 'Data.Function.&' operator.
 
 To make a Get query, you need to build a graph that you want to find in the DB.
 For that, start with template nodes and relations like 'defaultNodeReturn' and 'defaultRelReturn'.
-Customize them with endomorphisms in 'GetterLike' class and combine to template
+Customize them with endomorphisms in 'GetterLike' class and combine into template
 graph 'Graph' using 'addNode' and 'addRelation'.
 
 The result of running Get query will be represented as a 'Graph' as well. You can then use
