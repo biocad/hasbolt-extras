@@ -61,12 +61,13 @@ uRelationLikeClass = BiClassInfo { className    = ''URelationLike
 -- >                , quuz :: Int
 -- >                }
 --
--- You can make it instance of NodeClass by writing
+-- You can make it instance of 'NodeLike' by writing
+--
 -- > makeNodeLike ''Foo
 --
 -- Then you may create example and convert it into from from Node:
 --
--- > ghci>:set -XOverloadedStrings
+-- > ghci> :set -XOverloadedStrings
 -- > ghci> let foo = Bar 42.0 "Loren ipsum" 7
 -- > ghci> toNode foo
 -- > Node {nodeIdentity = -1, labels = ["Foo"], nodeProps = fromList [("baz",F 42.0),("quux",T "Loren ipsum"),("quuz",I 7)]}
