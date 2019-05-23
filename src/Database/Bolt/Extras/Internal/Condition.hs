@@ -10,13 +10,16 @@ module Database.Bolt.Extras.Internal.Condition
 
 -- | Conditional expressions over type 'a' and its mappings.
 -- Supported operations:
--- * equality check :==
--- * disunction     :&&
--- * conjunction    :||
+--
+-- * equality check ':=='
+-- * disunction     ':&&'
+-- * conjunction    ':||'
 --
 -- Typical usage:
--- Say we have variable 'var :: a', a function 'f :: a -> b' and a value 'val :: b'.
--- Expression 'f :== b' acts as 'f a == b'
+--
+-- Say we have variable @var :: a@, a function @f :: a -> b@ and a value @val :: b@.
+-- Expression @f :== val@ acts as @f var == val@.
+--
 -- Examples:
 --
 -- > data D = D { fld1 :: Int
@@ -48,8 +51,11 @@ matches obj (u :|| v)           = matches obj u || matches obj v
 
 
 -- | Matching 'tautology' will always succeed.
+--
 -- > whatever `matches` tautology == True
--- > -- Match is lazy:
+--
+-- Match is lazy:
+--
 -- > undefined `matches` tautology == True
 --
 tautology :: Condition a
@@ -57,6 +63,7 @@ tautology = const True :== True
 
 
 -- | Object itself instead of its mappings is matched with help of this alias.
+--
 -- > 42 `matches` (itself :== 42) == True
 -- > 42 `matches` (itself :== 41) == False
 --
