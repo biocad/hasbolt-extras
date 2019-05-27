@@ -48,7 +48,7 @@ library
                      , Database.Bolt.Extras.Graph.Internal.GraphQuery
                   
   build-depends:       base >=4.7 && <5
-                     , aeson
+                     , aeson >= 1.3.0.0
                      , aeson-casing
                      , containers
                      , free
