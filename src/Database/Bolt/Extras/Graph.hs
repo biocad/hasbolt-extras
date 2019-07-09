@@ -63,7 +63,8 @@ module Database.Bolt.Extras.Graph
     -- ** Getter types
     GetRequest,
     GetterLike(..),
-    NodeGetter(..), RelGetter(..),
+    NodeGetter(..),
+    RelGetter(..), RelGetterLike (..),
     GraphGetRequest,
 
     -- ** Default getters

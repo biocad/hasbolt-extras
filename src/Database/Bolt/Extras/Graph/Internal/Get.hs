@@ -15,6 +15,7 @@ module Database.Bolt.Extras.Graph.Internal.Get
     NodeGetter (..)
   , RelGetter (..)
   , GetterLike (..)
+  , RelGetterLike (..)
   , (#)
   , defaultNode
   , defaultRel
@@ -73,7 +74,7 @@ import           Database.Bolt                                     as B (BoltAct
                                                                          Node (..),
                                                                          Record,
                                                                          URelationship (..),
-                                                                         Value)
+                                                                         Value (..))
 import           Database.Bolt.Extras                              (BoltId, GetBoltId (..),
                                                                     Label,
                                                                     NodeLike (..),
@@ -113,6 +114,7 @@ data RelGetter = RelGetter { rgboltId      :: Maybe BoltId     -- ^ known 'BoltI
                            , rgLabel       :: Maybe Label      -- ^ known labels
                            , rgProps       :: Map Text B.Value -- ^ known properties
                            , rgReturnProps :: [Text]           -- ^ names of properties to return
+                           , rgIsDirected  :: Bool             -- ^ whether to match relationship direction or not
                            , rgIsReturned  :: Bool             -- ^ whether to return this relation or not
                            }
   deriving (Show, Eq)
@@ -129,7 +131,7 @@ defaultNode = NodeGetter Nothing [] (fromList []) []
 -- | 'RelGetter' that matches any relation.
 defaultRel :: Bool      -- ^ Whether to return the relation
            -> RelGetter
-defaultRel = RelGetter Nothing Nothing (fromList []) []
+defaultRel = RelGetter Nothing Nothing (fromList []) [] False
 
 -- | 'NodeGetter' that matches any node and returns it.
 defaultNodeReturn :: NodeGetter
@@ -158,6 +160,9 @@ class GetterLike a where
     withReturn :: [Text]          -> a -> a -- ^ add list of properties to return
     isReturned ::                    a -> a -- ^ set that entity should be returned
 
+class RelGetterLike a where
+    isDirected :: a -> a -- ^ set that relationship direction is matter
+
 instance GetterLike NodeGetter where
     withBoltId boltId ng = ng { ngboltId       = Just boltId }
     withLabel  lbl    ng = ng { ngLabels       = lbl : ngLabels ng }
@@ -174,6 +179,9 @@ instance GetterLike RelGetter where
     withReturn props  rg = rg { rgReturnProps  = rgReturnProps rg ++ props }
     isReturned        rg = rg { rgIsReturned   = True }
 
+instance RelGetterLike RelGetter where
+    isDirected rg = rg { rgIsDirected = True }
+
 instance Requestable (NodeName, NodeGetter) where
   request (name, ng) = [text|($name $labels $propsQ)|]
     where
@@ -181,10 +189,11 @@ instance Requestable (NodeName, NodeGetter) where
       propsQ = "{" <> (toCypher . toList . ngProps $ ng) <> "}"
 
 instance Requestable ((NodeName, NodeName), RelGetter) where
-  request ((stName, enName), rg) = [text|($stName)-[$name $typeQ $propsQ]-($enName)|]
+  request ((stName, enName), rg) = [text|($stName)-[$name $typeQ $propsQ]$dirQ($enName)|]
     where
       name   = relationName (stName, enName)
       typeQ  = maybe "" toCypher (rgLabel rg)
+      dirQ   = if rgIsDirected rg then "->" else "-"
       propsQ = "{" <> (toCypher . toList . rgProps $ rg) <> "}"
 
 instance Returnable (NodeName, NodeGetter) where

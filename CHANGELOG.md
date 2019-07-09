@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.19] - 2019-07-09
+### Added
+- Support directed relationship in graph dsl.
+
 ## [0.0.0.18] - 2019-05-27
 ### Changed
 - Updated dependencies.
