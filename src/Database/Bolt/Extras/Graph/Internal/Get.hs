@@ -73,7 +73,7 @@ import           Database.Bolt                                     as B (BoltAct
                                                                          Node (..),
                                                                          Record,
                                                                          URelationship (..),
-                                                                         Value (..))
+                                                                         Value)
 import           Database.Bolt.Extras                              (BoltId, GetBoltId (..),
                                                                     Label,
                                                                     NodeLike (..),
