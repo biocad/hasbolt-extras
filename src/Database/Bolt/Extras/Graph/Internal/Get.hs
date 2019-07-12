@@ -181,7 +181,7 @@ instance Requestable (NodeName, NodeGetter) where
       propsQ = "{" <> (toCypher . toList . ngProps $ ng) <> "}"
 
 instance Requestable ((NodeName, NodeName), RelGetter) where
-  request ((stName, enName), rg) = [text|($stName)-[$name $typeQ $propsQ]-($enName)|]
+  request ((stName, enName), rg) = [text|($stName)-[$name $typeQ $propsQ]->($enName)|]
     where
       name   = relationName (stName, enName)
       typeQ  = maybe "" toCypher (rgLabel rg)
