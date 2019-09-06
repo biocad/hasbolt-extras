@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.20] - 2019-09-06
+### Added
+- `WITH` statement in DSL.
+
 ## [0.0.0.19] - 2019-07-09
 ### Changed
 - Directed relationship in graph get dsl instead of undirected.

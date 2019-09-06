@@ -10,6 +10,7 @@ module Database.Bolt.Extras.DSL.Internal.Language
   , detachDeleteF
   , removeF
   , returnF
+  , withF
   , textF
   ) where
 
@@ -67,6 +68,11 @@ removeF txts = liftF (Remove txts ())
 --
 returnF :: [Text] -> Free Expr ()
 returnF txts = liftF (Return txts ())
+
+-- | Prepare 'WITH' query
+--
+withF :: [Text] -> Free Expr ()
+withF txts = liftF (With txts ())
 
 -- | Prepare query with custom text
 --

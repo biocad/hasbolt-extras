@@ -105,6 +105,7 @@ data Expr next = Create Selectors next        -- ^ CREATE query
                | DetachDelete [Text] next     -- ^ DETACH DELETE query
                | Remove [Text] next           -- ^ REMOVE query
                | Return [Text] next           -- ^ RETURN query
+               | With [Text] next             -- ^ WITH query
                | Text Text next               -- ^ free text query
   deriving (Show, Eq, Functor)
 
