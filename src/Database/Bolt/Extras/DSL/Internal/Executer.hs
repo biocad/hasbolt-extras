@@ -30,6 +30,7 @@ execute (Delete t n)        = executeHelperT "DELETE " t n
 execute (DetachDelete t n)  = executeHelperT "DETACH DELETE " t n
 execute (Remove t n)        = executeHelperT "REMOVE " t n
 execute (Return t n)        = executeHelperT "RETURN " t n
+execute (With t n)          = executeHelperT "WITH " t n
 execute (Text t n)          = tell [t] >> pure n
 
 -- | Helper to translate 'Expr' with something, which can be translated to cypher.
