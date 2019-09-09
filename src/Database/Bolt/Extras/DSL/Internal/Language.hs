@@ -16,8 +16,9 @@ module Database.Bolt.Extras.DSL.Internal.Language
 
 import           Control.Monad.Free                      (Free (..), liftF)
 import           Data.Text                               (Text)
-import           Database.Bolt.Extras.DSL.Internal.Types (Conds (..), Expr (..),
-                                                          Selectors)
+import           Database.Bolt.Extras.DSL.Internal.Types (Conds (..), Expr (..))
+
+import           Database.Bolt.Extras.Selector (Selectors)
 
 -- | Prepare 'CREATE' query
 --

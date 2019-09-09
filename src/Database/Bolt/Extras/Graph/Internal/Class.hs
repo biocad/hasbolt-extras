@@ -1,19 +1,11 @@
 module Database.Bolt.Extras.Graph.Internal.Class
-  (
-    Requestable (..)
-  , Returnable (..)
+  ( Returnable (..)
   , Extractable (..)
   ) where
 
 import           Control.Monad.IO.Class (MonadIO)
 import           Data.Text              (Text)
 import           Database.Bolt          (BoltActionT, Record)
-
--- | Entity which can be requested from Neo4j in @MATCH@ operator.
---
-class Requestable a where
-  -- | How to convert entity to Cypher.
-  request         :: a -> Text
 
 -- | Entity  which can be returned from Neo4j in @RETURN@ operator.
 --

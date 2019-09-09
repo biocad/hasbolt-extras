@@ -5,7 +5,6 @@
 {-# LANGUAGE QuasiQuotes             #-}
 {-# LANGUAGE ScopedTypeVariables     #-}
 {-# LANGUAGE TypeApplications        #-}
-{-# LANGUAGE TypeFamilies            #-}
 {-# LANGUAGE TypeFamilyDependencies  #-}
 
 module Database.Bolt.Extras.Graph.Internal.GraphQuery
@@ -33,13 +32,10 @@ import           Database.Bolt                                     (BoltActionT,
                                                                     query)
 import           Database.Bolt.Extras                              (BoltId, GetBoltId (..))
 import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph (..),
-                                                                    NodeName,
                                                                     emptyGraph,
-                                                                    relationName,
                                                                     relations,
                                                                     vertices)
 import           Database.Bolt.Extras.Graph.Internal.Class         (Extractable (..),
-                                                                    Requestable (..),
                                                                     Returnable (..))
 import           Database.Bolt.Extras.Graph.Internal.Get           (NodeGetter,
                                                                     NodeResult,
@@ -48,6 +44,8 @@ import           Database.Bolt.Extras.Graph.Internal.Get           (NodeGetter,
                                                                     requestGetters)
 import           Database.Bolt.Extras.Graph.Internal.Put           (PutNode, PutRelationship,
                                                                     requestPut)
+import           Database.Bolt.Extras.Selector                     (NodeName, Requestable (..),
+                                                                    relationName)
 import           NeatInterpolation                                 (text)
 
 -- | Type class used to perform requests to the Neo4j based on graphs.

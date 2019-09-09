@@ -46,6 +46,12 @@ library
                      , Database.Bolt.Extras.Graph.Internal.Get
                      , Database.Bolt.Extras.Graph.Internal.Put
                      , Database.Bolt.Extras.Graph.Internal.GraphQuery
+
+                     , Database.Bolt.Extras.Selector.Class
+                     , Database.Bolt.Extras.Selector.Types
+                     , Database.Bolt.Extras.Selector.Path
+                     , Database.Bolt.Extras.Selector.Instances
+                     , Database.Bolt.Extras.Selector
                   
   build-depends:       base >= 4.7 && <5
                      , aeson >= 1.2.4.0

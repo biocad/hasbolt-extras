@@ -126,8 +126,7 @@ module Database.Bolt.Extras.Graph
 
     -- * Internal machinery for forming Cypher queries
     GraphQuery(..),
-    Requestable(..), Returnable(..), Extractable(..),
-    NodeName, relationName,
+    Returnable(..), Extractable(..),
     requestGetters, requestPut,
 
     (#),

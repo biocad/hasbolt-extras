@@ -10,14 +10,10 @@ module Database.Bolt.Extras.Graph.Internal.AbstractGraph
   , emptyGraph
   , addNode
   , addRelation
-  , NodeName
-  , relationName
   ) where
 
 import           Control.Lens    (makeLenses, over)
 import           Data.Map.Strict (Map, insert, notMember)
-import           Data.Monoid     ((<>))
-import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 import           Text.Printf     (printf)
 
@@ -64,12 +60,3 @@ addRelation :: (Show n, Ord n)
 addRelation startName endName rel graph = if (startName, endName) `notMember` _relations graph
                                           then over relations (insert (startName, endName) rel) graph
                                           else error $ printf "relation with names (%s, %s) already exists" (show startName) (show endName)
-
--- | Alias for text node name.
---
-type NodeName = Text
-
--- | Build relationship name from the names of its start and end nodes
--- like @[startNodeName]0[endNodeName]@.
-relationName :: (NodeName, NodeName) -> Text
-relationName (st, en) = st <> "0" <> en

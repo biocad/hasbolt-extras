@@ -25,13 +25,13 @@ import           Database.Bolt                                     (Node (..), R
                                                                     exact)
 import           Database.Bolt.Extras                              (BoltId, ToCypher (..),
                                                                     fromInt)
-import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph (..),
-                                                                    NodeName,
-                                                                    relationName)
+import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph (..))
 import           Database.Bolt.Extras.Graph.Internal.Class         (Extractable (..),
-                                                                    Requestable (..),
                                                                     Returnable (..))
 import           NeatInterpolation                                 (text)
+
+import           Database.Bolt.Extras.Selector                     (NodeName, Requestable (..),
+                                                                    relationName)
 
 ------------------------------------------------------------------------------------------------
 -- REQUEST --

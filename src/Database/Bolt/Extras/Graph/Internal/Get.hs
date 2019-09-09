@@ -14,7 +14,7 @@ module Database.Bolt.Extras.Graph.Internal.Get
   -- * Types for requesting nodes and relationships
     NodeGetter (..)
   , RelGetter (..)
-  , GetterLike (..)
+  , GetterLike(..)
   , (#)
   , defaultNode
   , defaultRel
@@ -57,9 +57,6 @@ import           Data.Aeson.Casing                                 (aesonPrefix,
 import           Data.Function                                     ((&))
 import           Data.Map.Strict                                   as M (Map,
                                                                          filter,
-                                                                         fromList,
-                                                                         insert,
-                                                                         toList,
                                                                          (!))
 import           Data.Maybe                                        (catMaybes,
                                                                     fromJust,
@@ -72,24 +69,29 @@ import           Data.Text                                         (Text, cons,
 import           Database.Bolt                                     as B (BoltActionT,
                                                                          Node (..),
                                                                          Record,
-                                                                         URelationship (..),
-                                                                         Value)
+                                                                         URelationship (..))
 import           Database.Bolt.Extras                              (BoltId, GetBoltId (..),
                                                                     Label,
                                                                     NodeLike (..),
-                                                                    ToCypher (..),
                                                                     URelationLike (..))
 import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph,
-                                                                    NodeName,
-                                                                    relationName,
                                                                     relations,
                                                                     vertices)
 import           Database.Bolt.Extras.Graph.Internal.Class         (Extractable (..),
-                                                                    Requestable (..),
                                                                     Returnable (..))
+import           Database.Bolt.Extras.Selector                     (GetterLike (..),
+                                                                    NodeGetter (..),
+                                                                    NodeName,
+                                                                    RelGetter (..),
+                                                                    Requestable (..),
+                                                                    defaultNode,
+                                                                    defaultNodeNotReturn,
+                                                                    defaultNodeReturn,
+                                                                    defaultRel,
+                                                                    defaultRelNotReturn,
+                                                                    defaultRelReturn,
+                                                                    relationName)
 import           GHC.Generics                                      (Generic)
-import           Language.Haskell.TH.Syntax                        (Name,
-                                                                    nameBase)
 import           NeatInterpolation                                 (text)
 import           Text.Printf                                       (printf)
 
@@ -97,95 +99,10 @@ import           Text.Printf                                       (printf)
 -- REQUEST --
 ----------------------------------------------------------
 
--- | Helper to find 'Node's.
---
-data NodeGetter = NodeGetter { ngboltId      :: Maybe BoltId     -- ^ known 'BoltId'
-                             , ngLabels      :: [Label]          -- ^ known labels
-                             , ngProps       :: Map Text B.Value -- ^ known properties
-                             , ngReturnProps :: [Text]           -- ^ names of properties to return
-                             , ngIsReturned  :: Bool             -- ^ whether to return this node or not
-                             }
-  deriving (Show, Eq)
-
--- | Helper to find 'URelationship's.
---
-data RelGetter = RelGetter { rgboltId      :: Maybe BoltId     -- ^ known 'BoltId'
-                           , rgLabel       :: Maybe Label      -- ^ known labels
-                           , rgProps       :: Map Text B.Value -- ^ known properties
-                           , rgReturnProps :: [Text]           -- ^ names of properties to return
-                           , rgIsReturned  :: Bool             -- ^ whether to return this relation or not
-                           }
-  deriving (Show, Eq)
 
 -- | A synonym for '&'. Kept for historical reasons.
 (#) :: a -> (a -> b) -> b
 (#) = (&)
-
--- | 'NodeGetter' that matches any node.
-defaultNode :: Bool       -- ^ Whether to return the node
-            -> NodeGetter
-defaultNode = NodeGetter Nothing [] (fromList []) []
-
--- | 'RelGetter' that matches any relation.
-defaultRel :: Bool      -- ^ Whether to return the relation
-           -> RelGetter
-defaultRel = RelGetter Nothing Nothing (fromList []) []
-
--- | 'NodeGetter' that matches any node and returns it.
-defaultNodeReturn :: NodeGetter
-defaultNodeReturn = defaultNode True
-
--- | 'NodeGetter' that matches any node and does not return it.
-defaultNodeNotReturn :: NodeGetter
-defaultNodeNotReturn = defaultNode False
-
--- | 'RelGetter' that matches any relation and returns it.
-defaultRelReturn :: RelGetter
-defaultRelReturn = defaultRel True
-
-
--- | 'RelGetter' that matches any relation and does not return it.
-defaultRelNotReturn :: RelGetter
-defaultRelNotReturn = defaultRel False
-
--- | Endomorphisms to set up 'NodeGetter' and 'RelGetter'.
---
-class GetterLike a where
-    withBoltId :: BoltId          -> a -> a -- ^ set known 'BoltId'
-    withLabel  :: Label           -> a -> a -- ^ set known label
-    withLabelQ :: Name            -> a -> a -- ^ set known label as TemplateHaskell 'Name'
-    withProp   :: (Text, B.Value) -> a -> a -- ^ add known property
-    withReturn :: [Text]          -> a -> a -- ^ add list of properties to return
-    isReturned ::                    a -> a -- ^ set that entity should be returned
-
-instance GetterLike NodeGetter where
-    withBoltId boltId ng = ng { ngboltId       = Just boltId }
-    withLabel  lbl    ng = ng { ngLabels       = lbl : ngLabels ng }
-    withLabelQ lblQ      = withLabel (pack . nameBase $ lblQ)
-    withProp (pk, pv) ng = ng { ngProps        = insert pk pv (ngProps ng) }
-    withReturn props  ng = ng { ngReturnProps  = ngReturnProps ng ++ props }
-    isReturned        ng = ng { ngIsReturned   = True }
-
-instance GetterLike RelGetter where
-    withBoltId boltId rg = rg { rgboltId       = Just boltId }
-    withLabel  lbl    rg = rg { rgLabel        = Just lbl    }
-    withLabelQ lblQ      = withLabel (pack . nameBase $ lblQ)
-    withProp (pk, pv) rg = rg { rgProps        = insert pk pv (rgProps rg) }
-    withReturn props  rg = rg { rgReturnProps  = rgReturnProps rg ++ props }
-    isReturned        rg = rg { rgIsReturned   = True }
-
-instance Requestable (NodeName, NodeGetter) where
-  request (name, ng) = [text|($name $labels $propsQ)|]
-    where
-      labels = toCypher . ngLabels $ ng
-      propsQ = "{" <> (toCypher . toList . ngProps $ ng) <> "}"
-
-instance Requestable ((NodeName, NodeName), RelGetter) where
-  request ((stName, enName), rg) = [text|($stName)-[$name $typeQ $propsQ]->($enName)|]
-    where
-      name   = relationName (stName, enName)
-      typeQ  = maybe "" toCypher (rgLabel rg)
-      propsQ = "{" <> (toCypher . toList . rgProps $ rg) <> "}"
 
 instance Returnable (NodeName, NodeGetter) where
   isReturned' (_, ng) = ngIsReturned ng
