@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.21] - 2019-09-09
+### Added
+- `OverloadedLabels` instances and operators for easy selector writing.
+
 ## [0.0.0.20] - 2019-09-06
 ### Added
 - `WITH` statement in DSL.
