@@ -1,20 +1,34 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE QuasiQuotes          #-}
-{-# LANGUAGE RecordWildCards      #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeApplications      #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Database.Bolt.Extras.DSL.Internal.Instances () where
 
 import           Control.Monad.Writer                    (execWriter, tell)
+import           Data.Function                           ((&))
 import           Data.Monoid                             ((<>))
+import           Data.Proxy                              (Proxy (..))
 import           Data.Text                               (intercalate, pack)
 import           Database.Bolt.Extras                    (ToCypher (..),
                                                           fromInt)
-import           Database.Bolt.Extras.DSL.Internal.Types
+import           GHC.OverloadedLabels                    (IsLabel (..))
+import           GHC.TypeLits                            (KnownSymbol,
+                                                          symbolVal)
 import           NeatInterpolation                       (text)
 import           Text.Printf                             (printf)
+
+import           Database.Bolt.Extras.DSL.Internal.Types
+
+instance KnownSymbol x => IsLabel x NodeSelector where
+  fromLabel = defaultNode & withIdentifier (pack $ symbolVal @x Proxy)
+
+instance KnownSymbol x => IsLabel x RelSelector where
+  fromLabel = defaultRel & withIdentifier (pack $ symbolVal @x Proxy)
 
 instance SelectorLike NodeSelector where
     withIdentifier idx node = node { nodeIdentifier = Just idx }

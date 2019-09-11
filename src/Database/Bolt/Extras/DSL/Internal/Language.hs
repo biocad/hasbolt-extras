@@ -1,6 +1,7 @@
 module Database.Bolt.Extras.DSL.Internal.Language
   (
-    createF
+    CypherDSL
+  , createF
   , matchF
   , optionalMatchF
   , mergeF
@@ -18,6 +19,10 @@ import           Control.Monad.Free                      (Free (..), liftF)
 import           Data.Text                               (Text)
 import           Database.Bolt.Extras.DSL.Internal.Types (Conds (..), Expr (..),
                                                           Selectors)
+
+-- | A synonym for 'Free' DSL.
+--
+type CypherDSL a = Free Expr ()
 
 -- | Prepare 'CREATE' query
 --

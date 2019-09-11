@@ -16,13 +16,20 @@ module Database.Bolt.Extras.DSL.Internal.Types
   , Conds (..)
   , Expr (..)
   , SelectorLike (..)
+  , (.:)
+  , (.#)
   , (#)
+  , (-:)
+  , (<-:)
   , defaultNode
+  , defN
   , defaultRel
+  , defR
   , toNodeSelector
   , toRelSelector
   ) where
 
+import           Data.Foldable        (foldl')
 import           Data.Map.Strict      (toList)
 import           Data.Text            (Text)
 import           Database.Bolt        (Node (..), URelationship (..),
@@ -38,6 +45,12 @@ class SelectorLike a where
 
 -- | Selector for 'Node's.
 --
+-- This datatype has @OverloadedLabels@ instance to simplify specifying nodes. Labels produce
+-- empty nodes.
+--
+-- > #foo :: NodeSelector
+-- > -- foo = NodeSelector (Just "foo") [] []
+--
 data NodeSelector = NodeSelector { nodeIdentifier :: Maybe Text
                                  , nodeLabels     :: [Text]
                                  , nodeProperties :: [(Text, Value)]
@@ -46,12 +59,30 @@ data NodeSelector = NodeSelector { nodeIdentifier :: Maybe Text
 
 -- | Selector for 'URelationship's.
 --
+-- This datatype has @OverloadedLabels@ instance as well, similar to 'NodeSelector'.
 data RelSelector = RelSelector { relIdentifier :: Maybe Text
                                , relLabel      :: Text
                                , relProperties :: [(Text, Value)]
                                }
   deriving (Show, Eq)
 
+-- | Operator version of 'withLabel'. To be used with @OverloadedLabels@ instances.
+--
+-- > #foo .: "Foo" :: NodeSelector
+--
+infixl 9 .:
+(.:) :: SelectorLike a => a -> Text -> a
+(.:) = flip withLabel
+
+-- | Operator version of 'withProp'. To be used with @OverloadedLabels@ instances.
+--
+-- See also 'Database.Bolt.=:' from @Database.Bolt@ package.
+--
+-- > #foo .# ["bar" =: 42, "baz" =: "baz"] :: NodeSelector
+--
+infixl 9 .#
+(.#) :: SelectorLike a => a -> [(Text, Value)] -> a
+(.#) = foldl' (flip withProp)
 
 (#) :: a -> (a -> b) -> b
 (#) = flip ($)
@@ -70,6 +101,18 @@ data PathSelector = PathSelector :-!: PathPart  -- ^ not directed relation
                   | PathSelector :<-!: PathPart -- ^ directed relation
                   | P NodeSelector              -- ^ starting node of Path
   deriving (Show, Eq)
+
+-- | Combined version of ':-!:' and 'P' for specifying the first node of path.
+--
+infixl 1 -:
+(-:) :: NodeSelector -> PathPart -> PathSelector
+ns -: pp = P ns :-!: pp
+
+-- | Combined version of ':<-!:' and 'P' for specifying the first node of path.
+--
+infixl 1 <-:
+(<-:) :: NodeSelector -> PathPart -> PathSelector
+ns <-: pp = P ns :<-!: pp
 
 data Selector = PS PathSelector -- ^ path selector
               | TS Text         -- ^ free text selector
@@ -109,11 +152,21 @@ data Expr next = Create Selectors next        -- ^ CREATE query
                | Text Text next               -- ^ free text query
   deriving (Show, Eq, Functor)
 
+-- | Empty 'NodeSelector'.
 defaultNode :: NodeSelector
 defaultNode = NodeSelector Nothing [] []
 
+-- | Shorter synonym for 'defaultRel'.
+defN :: NodeSelector
+defN = defaultNode
+
+-- | Empty 'RelSelector'.
 defaultRel :: RelSelector
 defaultRel = RelSelector Nothing "" []
+
+-- | Shorter synonym for 'defaultRel'.
+defR :: RelSelector
+defR = defaultRel
 
 toNodeSelector :: Node -> NodeSelector
 toNodeSelector Node{..} = defaultNode { nodeLabels      = labels
