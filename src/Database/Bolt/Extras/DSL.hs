@@ -20,6 +20,7 @@ module Database.Bolt.Extras.DSL
     (-:), (<-:),
     Selector(..),
     Selectors,
+    (#),
 
     -- ** Default selectors
     defaultNode, defN, defaultRel, defR,
