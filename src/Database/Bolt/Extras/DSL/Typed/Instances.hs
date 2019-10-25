@@ -12,6 +12,7 @@
 module Database.Bolt.Extras.DSL.Typed.Instances where
 
 import           Data.Coerce                             (coerce)
+import           Data.Function                           ((&))
 import           Data.Kind                               (Type)
 import           Data.Text                               (pack)
 import           GHC.Exts                                (proxy#)
@@ -25,6 +26,12 @@ import qualified Database.Bolt.Extras.DSL                as UT
 
 import           Database.Bolt.Extras.DSL.Typed.Families
 import           Database.Bolt.Extras.DSL.Typed.Types
+
+instance (KnownSymbol x, types ~ '[]) => IsLabel x (NodeSelector types) where
+  fromLabel = defN & withIdentifier (pack $ symbolVal' @x proxy#)
+
+instance (KnownSymbol x, types ~ 'Nothing) => IsLabel x (RelSelector types) where
+  fromLabel = defR & withIdentifier (pack $ symbolVal' @x proxy#)
 
 instance (field ~ field1, KnownSymbol field) => IsLabel field (SymbolS field1) where
   fromLabel = SymbolS $ symbolVal' @field proxy#
