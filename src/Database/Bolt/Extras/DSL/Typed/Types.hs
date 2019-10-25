@@ -25,22 +25,26 @@ import           Database.Bolt.Extras.DSL.Typed.Families
 class SelectorLike (a :: k -> Type) where
   -- | This constraint checks that current collection of types supports adding one more.
   type CanAddType (types :: k) :: Constraint
+
   -- | This type family implements adding a new type (of label) to the collection.
   --
   -- Injectivity annotation is required to make type inference possible.
   type AddType (types :: k) (typ :: Type) = (result :: k) | result -> types typ
+
   -- | This constraint checks that field with this name has correct type in the collection
   -- of labels.
   type HasField (types :: k) (field :: Symbol) (typ :: Type) :: Constraint
 
   -- | Set an identifier — Cypher variable name.
   withIdentifier :: Text -> a types -> a types
+
   -- | Add a new label, if possible.
   withLabel
     :: CanAddType types
     => KnownSymbol (GetTypeName (Rep typ))
     => a types
     -> a (AddType types typ)
+
   -- | Add a property with value, checking that such property exists.
   withProp
     :: HasField types field typ

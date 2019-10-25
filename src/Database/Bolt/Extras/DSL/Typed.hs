@@ -137,7 +137,7 @@ the type of literal @42@, which is @Num a => a@.
 >>> -- Adding a property to relationship without a label
 >>> defR & prop (#foo =: 42)
 ...
-... Tried to set property on a relationship without label!
+... Tried to set property "foo" on a relationship without label!
 ...
 -}
 

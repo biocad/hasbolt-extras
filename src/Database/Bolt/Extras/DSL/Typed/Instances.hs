@@ -67,8 +67,11 @@ instance SelectorLike RelSelector where
          ':<>: 'Text "!"
         )
   type AddType 'Nothing (typ :: Type) = 'Just typ
-  type HasField 'Nothing (field :: Symbol) _ =
-    TypeError ('Text "Tried to set property on a relationship without label!")
+  type HasField 'Nothing (field :: Symbol) _
+    = TypeError
+        ('Text "Tried to set property " ':<>: 'ShowType field
+         ':<>: 'Text " on a relationship without label!"
+        )
   type HasField ('Just record) (field :: Symbol) (typ :: Type) =
     Assert (NoFieldError field '[record]) (GetTypeFromRecord field (Rep record)) ~ typ
 
