@@ -7,6 +7,11 @@ module Database.Bolt.Extras.DSL.Typed
   , (.#)
   , defN
   , defR
+
+  , (!->:)
+  , (!-:)
+  , (-:)
+  , (<-:)
   ) where
 
 import Database.Bolt.Extras.DSL.Typed.Types

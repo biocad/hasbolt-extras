@@ -72,3 +72,19 @@ defN = NodeSelector UT.defaultNode
 
 defR :: RelSelector 'Nothing
 defR = RelSelector UT.defaultRel
+
+infixl 2 !->:
+(!->:) :: RelSelector a -> NodeSelector b -> UT.PathPart
+RelSelector r !->: NodeSelector n = r UT.:!->: n
+
+infixl 2 !-:
+(!-:) :: RelSelector a -> NodeSelector b -> UT.PathPart
+RelSelector r !-: NodeSelector n = r UT.:!-: n
+
+infixl 1 -:
+(-:) :: NodeSelector a -> UT.PathPart -> UT.PathSelector
+NodeSelector ns -: pp = UT.P ns UT.:-!: pp
+
+infixl 1 <-:
+(<-:) :: NodeSelector a -> UT.PathPart -> UT.PathSelector
+NodeSelector ns <-: pp = UT.P ns UT.:<-!: pp
