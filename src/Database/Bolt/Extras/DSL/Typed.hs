@@ -17,10 +17,10 @@ module Database.Bolt.Extras.DSL.Typed
   -- $safety
 
     SelectorLike(..)
-  , NodeSelector, RelSelector
   , lbl
   , prop
   , (=:)
+  , NodeSelector, RelSelector
   , defN
   , defR
 
@@ -49,6 +49,7 @@ import Database.Bolt.Extras.DSL.Typed.Instances ()
 >>> import Database.Bolt.Extras (toCypher)
 >>> toCypherN = putStrLn . unpack . toCypher  . unsafeNodeSelector
 >>> toCypherR = putStrLn . unpack . toCypher . unsafeRelSelector
+>>> toCypherP = putStrLn . unpack . toCypher
 >>> data Binder = Binder { uuid :: Text } deriving (Generic)
 >>> data Foo = Foo { foo :: Int } deriving (Generic)
 >>> data PLACE = PLACE deriving (Generic)
@@ -144,5 +145,12 @@ adding a 'NodeSelector' or 'RelSelector' to path simply drops all type informati
 into untyped variant.
 
 Due to limitation of what symbols are allowed in operators and operator-like data constructors, this
-module renames some of the path constructors.
+module renames some of the path constructors. Precedence of the operators is adjusted so that they
+combine nicely with 'Data.Function.&'. However, this means that a path cannot be used in an
+expression with '$'.
+
+Here is an example of a path constructed this way:
+
+>>> toCypherP (#binder & lbl @Binder & prop (#uuid =: "123") -: defR & lbl @ELEMENT !->: #el)
+(binder:Binder{uuid:"123"})-[:ELEMENT]->(el)
 -}
