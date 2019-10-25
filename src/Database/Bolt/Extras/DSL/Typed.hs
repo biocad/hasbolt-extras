@@ -3,6 +3,9 @@
 This module extends selectors from 'Database.Bolt.Extras.DSL.DSL' with extra type-level
 information to make them more type-safe to use.
 
+None of additional type information exists at runtime, so using this module does not degrade
+performance at all.
+
 -}
 
 module Database.Bolt.Extras.DSL.Typed
