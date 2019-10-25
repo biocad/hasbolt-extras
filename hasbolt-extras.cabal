@@ -27,6 +27,7 @@ library
                      , Database.Bolt.Extras.Graph
                      , Database.Bolt.Extras.Template
                      , Database.Bolt.Extras.DSL
+                     , Database.Bolt.Extras.DSL.Typed
                      , Database.Bolt.Extras.Utils
   other-modules:       Database.Bolt.Extras.Internal.Cypher
                      , Database.Bolt.Extras.Internal.Condition
@@ -40,6 +41,9 @@ library
                      , Database.Bolt.Extras.DSL.Internal.Language
                      , Database.Bolt.Extras.DSL.Internal.Executer
                      , Database.Bolt.Extras.DSL.Internal.Instances
+                     , Database.Bolt.Extras.DSL.Typed.Types
+                     , Database.Bolt.Extras.DSL.Typed.Families
+                     , Database.Bolt.Extras.DSL.Typed.Instances
 
                      , Database.Bolt.Extras.Graph.Internal.AbstractGraph
                      , Database.Bolt.Extras.Graph.Internal.Class
