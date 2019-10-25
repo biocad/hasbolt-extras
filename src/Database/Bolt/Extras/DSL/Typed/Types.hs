@@ -54,18 +54,16 @@ newtype RelSelector (typ :: Maybe Type)
 newtype SymbolS (s :: Symbol) = SymbolS { getSymbol :: String }
   deriving (Show)
 
-infixl 2 =:
 (=:) :: forall (field :: Symbol) (typ :: Type). SymbolS field -> typ -> (SymbolS field, typ)
 (=:) = (,)
 
-infixl 1 .#
-(.#)
+prop
   :: forall (field :: Symbol) (a :: k -> Type) (types :: k) (typ :: Type)
   .  SelectorLike a
   => HasField types field typ
   => B.IsValue typ
-  => a types -> (SymbolS field, typ) -> a types
-(.#) = flip withProp
+  => (SymbolS field, typ) -> a types -> a types
+prop = withProp
 
 defN :: NodeSelector '[]
 defN = NodeSelector UT.defaultNode

@@ -3,8 +3,8 @@ module Database.Bolt.Extras.DSL.Typed
 
     SelectorLike(..)
   , lbl
+  , prop
   , (=:)
-  , (.#)
   , defN
   , defR
 
