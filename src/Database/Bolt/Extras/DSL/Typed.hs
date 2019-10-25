@@ -35,6 +35,7 @@ module Database.Bolt.Extras.DSL.Typed
   , (!-:)
   , (-:)
   , (<-:)
+  , p
   ) where
 
 

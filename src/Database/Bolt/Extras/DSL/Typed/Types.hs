@@ -124,3 +124,7 @@ infixl 0 <-:
 -- | See 'UT.<-:'. This combinator forgets type-level information from the selectors.
 (<-:) :: NodeSelector a -> UT.PathPart -> UT.PathSelector
 NodeSelector ns <-: pp = UT.P ns UT.:<-!: pp
+
+-- | See 'UT.P'. This combinator forgets type-level information from the selectors.
+p :: NodeSelector a -> UT.PathSelector
+p (NodeSelector ns) = UT.P ns
