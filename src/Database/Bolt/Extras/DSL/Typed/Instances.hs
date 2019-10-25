@@ -41,7 +41,8 @@ instance (field ~ field1, KnownSymbol field) => IsLabel field (SymbolS field1) w
 instance SelectorLike NodeSelector where
   type CanAddType _ = ()
   type AddType (types :: [Type]) (typ :: Type) = typ ': types
-  type HasField (types :: [Type]) (field :: Symbol) (typ :: Type) = AnyHasType field typ types ~ 'True
+  type HasField (types :: [Type]) (field :: Symbol) (typ :: Type) =
+    Assert (NoFieldError field types) (GetTypeFromList field types) ~ typ
 
   withIdentifier = coerce $ UT.withIdentifier @UT.NodeSelector
   withLabel
@@ -66,7 +67,10 @@ instance SelectorLike RelSelector where
          ':<>: 'Text "!"
         )
   type AddType 'Nothing (typ :: Type) = 'Just typ
-  type HasField ('Just record) (field :: Symbol) (typ :: Type) = IsType field typ record ~ 'True
+  type HasField 'Nothing (field :: Symbol) _ =
+    TypeError ('Text "Tried to set property on a relationship without label!")
+  type HasField ('Just record) (field :: Symbol) (typ :: Type) =
+    Assert (NoFieldError field '[record]) (GetTypeFromRecord field (Rep record)) ~ typ
 
   withIdentifier = coerce $ UT.withIdentifier @UT.RelSelector
   withLabel
