@@ -7,6 +7,7 @@
 {-# LANGUAGE TypeApplications      #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE TypeOperators         #-}
+{-# LANGUAGE UndecidableInstances  #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Database.Bolt.Extras.DSL.Typed.Instances where
@@ -18,8 +19,9 @@ import           Data.Text                               (pack)
 import           GHC.Exts                                (proxy#)
 import           GHC.Generics                            (Rep)
 import           GHC.OverloadedLabels                    (IsLabel (..))
-import           GHC.TypeLits                            (KnownSymbol, Symbol,
-                                                          symbolVal')
+import           GHC.TypeLits                            (ErrorMessage (..),
+                                                          KnownSymbol, Symbol,
+                                                          TypeError, symbolVal')
 
 import qualified Database.Bolt                           as B
 import qualified Database.Bolt.Extras.DSL                as UT
@@ -57,7 +59,12 @@ instance SelectorLike NodeSelector where
 
 instance SelectorLike RelSelector where
   type CanAddType 'Nothing = ()
-  type CanAddType ('Just a) = 'False ~ 'True
+  type CanAddType ('Just a)
+    = TypeError
+        ('Text "Can't add a new label to relationship selector that already has label "
+         ':<>: 'ShowType a
+         ':<>: 'Text "!"
+        )
   type AddType 'Nothing (typ :: Type) = 'Just typ
   type HasField ('Just record) (field :: Symbol) (typ :: Type) = IsType field typ record ~ 'True
 
