@@ -105,22 +105,29 @@ defN = NodeSelector UT.defaultNode
 defR :: RelSelector 'Nothing
 defR = RelSelector UT.defaultRel
 
-infixl 1 !->:
+infixl 3 .&
+-- | This is the same as 'Data.Function.&', but with higher precedence, so that it binds before
+-- path combinators.
+(.&) :: a -> (a -> b) -> b
+a .& f = f a
+{-# INLINE (.&) #-}
+
+infixl 2 !->:
 -- | See 'UT.:!->:'. This combinator forgets type-level information from the selectors.
 (!->:) :: RelSelector a -> NodeSelector b -> UT.PathPart
 RelSelector r !->: NodeSelector n = r UT.:!->: n
 
-infixl 1 !-:
+infixl 2 !-:
 -- | See 'UT.:!-:'. This combinator forgets type-level information from the selectors.
 (!-:) :: RelSelector a -> NodeSelector b -> UT.PathPart
 RelSelector r !-: NodeSelector n = r UT.:!-: n
 
-infixl 0 -:
+infixl 1 -:
 -- | See 'UT.-:'. This combinator forgets type-level information from the selectors.
 (-:) :: NodeSelector a -> UT.PathPart -> UT.PathSelector
 NodeSelector ns -: pp = UT.P ns UT.:-!: pp
 
-infixl 0 <-:
+infixl 1 <-:
 -- | See 'UT.<-:'. This combinator forgets type-level information from the selectors.
 (<-:) :: NodeSelector a -> UT.PathPart -> UT.PathSelector
 NodeSelector ns <-: pp = UT.P ns UT.:<-!: pp

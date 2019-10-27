@@ -31,6 +31,7 @@ module Database.Bolt.Extras.DSL.Typed
   --
   -- $paths
 
+  , (.&)
   , (!->:)
   , (!-:)
   , (-:)
@@ -49,7 +50,6 @@ import Database.Bolt.Extras.DSL.Typed.Instances ()
 >>> :set -XOverloadedStrings
 >>> import Data.Text (Text, unpack)
 >>> import GHC.Generics (Generic)
->>> import Data.Function ((&))
 >>> import Database.Bolt.Extras (toCypher)
 >>> toCypherN = putStrLn . unpack . toCypher  . unsafeNodeSelector
 >>> toCypherR = putStrLn . unpack . toCypher . unsafeRelSelector
@@ -73,14 +73,14 @@ extended with the following combinators:
 - 'prop' adds a new property, making sure that this property exists in one of the labels and
   has correct type
 
-Typically selectors are chained by 'Data.Function.&' starting from 'defN' or 'defR' like this:
+Typically selectors are chained by '.&' starting from 'defN' or 'defR' like this:
 
->>> toCypherN $ defN & withIdentifier "binder" & lbl @Binder & prop (#uuid =: "123-456")
+>>> toCypherN $ defN .& withIdentifier "binder" .& lbl @Binder .& prop (#uuid =: "123-456")
 (binder:Binder{uuid:"123-456"})
 
 Alternatively, @OverloadedLabels@ may be used to create an empty selector with an identifier:
 
->>> toCypherN $ #binder & lbl @Binder & prop (#uuid =: "123-456")
+>>> toCypherN $ #binder .& lbl @Binder .& prop (#uuid =: "123-456")
 (binder:Binder{uuid:"123-456"})
 
 This syntax is more concise and makes it obvious what is going on. Thus, it is the preferred
@@ -90,12 +90,12 @@ The type used with 'lbl' should have 'GHC.Generics.Generic' instance.
 
 Nodes may have multiple labels:
 
->>> toCypherN $ defN & lbl @Binder & lbl @Foo
+>>> toCypherN $ defN .& lbl @Binder .& lbl @Foo
 (:Foo:Binder)
 
 But relations have at most one:
 
->>> defR & lbl @PLACE & lbl @ELEMENT
+>>> defR .& lbl @PLACE .& lbl @ELEMENT
 ...
 ... Can't add a new label to relationship selector that already has label PLACE!
 ...
@@ -109,25 +109,25 @@ will report the error.
 Here are more interesting cases:
 
 >>> -- Properties are looked for in all labels
->>> toCypherN $ defN & lbl @Binder & lbl @Foo & prop (#foo =: 42) & prop (#uuid =: "123-456")
+>>> toCypherN $ defN .& lbl @Binder .& lbl @Foo .& prop (#foo =: 42) .& prop (#uuid =: "123-456")
 (:Foo:Binder{uuid:"123-456",foo:42})
 
 >>> -- Adding a property to node without any labels
->>> defN & prop (#uuid =: "123-456")
+>>> defN .& prop (#uuid =: "123-456")
 ...
 ... There is no field "uuid" in any of the records
 ... '[]
 ...
 
 >>> -- Adding a property that does not exist in the label
->>> defN & lbl @Binder & prop (#foo =: 42)
+>>> defN .& lbl @Binder .& prop (#foo =: 42)
 ...
 ... There is no field "foo" in any of the records
 ... '[Binder]
 ...
 
 >>> -- Adding a property with wrong type
->>> defN & lbl @Binder & prop (#uuid =: 42)
+>>> defN .& lbl @Binder .& prop (#uuid =: 42)
 ...
 ... No instance for (Num Text) arising from the literal ‘42’
 ...
@@ -136,7 +136,7 @@ Here we see that GHC undestands that the property should have type @Text@ and tr
 the type of literal @42@, which is @Num a => a@.
 
 >>> -- Adding a property to relationship without a label
->>> defR & prop (#foo =: 42)
+>>> defR .& prop (#foo =: 42)
 ...
 ... Tried to set property "foo" on a relationship without label!
 ...
@@ -149,12 +149,11 @@ adding a 'NodeSelector' or 'RelSelector' to path simply drops all type informati
 into untyped variant.
 
 Due to limitation of what symbols are allowed in operators and operator-like data constructors, this
-module renames some of the path constructors. Precedence of the operators is adjusted so that they
-combine nicely with 'Data.Function.&'. However, this means that a path cannot be used in an
-expression with '$'.
+module renames some of the path constructors. Precedence of the operators allow them to be combined
+in the same expression with '.&' and '$' without any extra parentheses.
 
 Here is an example of a path constructed this way:
 
->>> toCypherP (#binder & lbl @Binder & prop (#uuid =: "123") -: defR & lbl @ELEMENT !->: #el)
+>>> toCypherP (#binder .& lbl @Binder .& prop (#uuid =: "123") -: defR .& lbl @ELEMENT !->: #el)
 (binder:Binder{uuid:"123"})-[:ELEMENT]->(el)
 -}
