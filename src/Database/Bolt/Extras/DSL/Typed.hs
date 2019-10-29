@@ -58,6 +58,14 @@ import Database.Bolt.Extras.DSL.Typed.Instances ()
 >>> data Foo = Foo { foo :: Int } deriving (Generic)
 >>> data PLACE = PLACE deriving (Generic)
 >>> data ELEMENT = ELEMENT deriving (Generic)
+>>> data Name = Name { name :: Text } deriving (Generic)
+>>> data User = User { user :: Text } deriving (Generic)
+>>> data NAME_OF = NAME_OF deriving (Generic)
+>>> data USER_CREATED = USER_CREATED { timestamp :: Int } deriving (Generic)
+>>> data Library = Library deriving (Generic)
+>>> data BinderLibrary = BinderLibrary deriving (Generic)
+>>> import Database.Bolt.Extras.DSL (createF, mergeF, Selector(..), formQuery, returnF)
+>>> toCypherQ = putStrLn . unpack . formQuery
 -}
 
 {- $selecting
@@ -99,6 +107,28 @@ But relations have at most one:
 ...
 ... Can't add a new label to relationship selector that already has label PLACE!
 ...
+
+==== Complex queries
+
+These selectors are fully compatible with the 'Database.Bolt.Extras.DSL.DSL':
+
+>>> :{
+toCypherQ $ do
+   mergeF
+     [ PS $ p $ #name .& lbl @Name .& prop (#name =: "CT42")
+     ]
+   mergeF
+     [ PS $ p $ #user .& lbl @User .& prop (#user =: "123-456")
+     ]
+   createF
+     [ PS $ p $ #lib .& lbl @Library .& lbl @BinderLibrary
+     , PS $ #name -: defR .& lbl @NAME_OF !->: #lib
+     , PS $ #user -: defR .& lbl @USER_CREATED .& prop (#timestamp =: 1572340394000) !->: #lib
+     ]
+   returnF ["lib"]
+:}
+MERGE (name:Name{name:"CT42"}) MERGE (user:User{user:"123-456"}) CREATE (lib:BinderLibrary:Library), (name)-[:NAME_OF]->(lib), (user)-[:USER_CREATED{timestamp:1572340394000}]->(lib) RETURN lib
+
 -}
 
 {- $safety
