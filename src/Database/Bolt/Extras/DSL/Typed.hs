@@ -55,7 +55,7 @@ import Database.Bolt.Extras.DSL.Typed.Instances ()
 >>> toCypherR = putStrLn . unpack . toCypher . unsafeRelSelector
 >>> toCypherP = putStrLn . unpack . toCypher
 >>> data Binder = Binder { uuid :: Text } deriving (Generic)
->>> data Foo = Foo { foo :: Int } deriving (Generic)
+>>> data Foo = Foo { bar :: Bool, foo :: Int } deriving (Generic)
 >>> data PLACE = PLACE deriving (Generic)
 >>> data ELEMENT = ELEMENT deriving (Generic)
 >>> data Name = Name { name :: Text } deriving (Generic)
