@@ -8,8 +8,8 @@
 module Database.Bolt.Extras.DSL.Typed.Families where
 
 import           Data.Kind      (Constraint, Type)
-import           Data.Type.Bool (If)
-import           GHC.Generics   (C1, D1, Meta (..), Rec0, Rep, S1)
+import           Data.Type.Bool (If, type (||))
+import           GHC.Generics   ((:*:), C1, D1, Meta (..), Rec0, Rep, S1)
 import           GHC.TypeLits   (ErrorMessage (..), Symbol, TypeError)
 
 -- | This family extracts name of the type from Generic 'Rep'.
@@ -19,6 +19,7 @@ type family GetTypeName (a :: k -> Type) :: Symbol where
 -- | This family checks whether a record (in a form of 'Rep') has a field with given name.
 type family RecordHasField (field :: Symbol) (record :: k -> Type) :: Bool where
   RecordHasField field (D1 _ (C1 _ sels)) = RecordHasField field sels
+  RecordHasField field (l :*: r) = RecordHasField field l || RecordHasField field r
   RecordHasField field (S1 ('MetaSel ('Just field) _ _ _) _) = 'True
   RecordHasField _ _ = 'False
 
@@ -26,6 +27,9 @@ type family RecordHasField (field :: Symbol) (record :: k -> Type) :: Bool where
 type family GetTypeFromRecord (field :: Symbol) (record :: k -> Type) :: Type where
   GetTypeFromRecord field (D1 _ (C1 _ sels)) = GetTypeFromRecord field sels
   GetTypeFromRecord field (S1 ('MetaSel ('Just field) _ _ _) (Rec0 typ)) = typ
+  GetTypeFromRecord field (S1 ('MetaSel ('Just field) _ _ _) (Rec0 typ ) :*: _) = typ
+  GetTypeFromRecord field (S1 ('MetaSel ('Just _) _ _ _) (Rec0 typ ) :*: r) =
+    GetTypeFromRecord field r
 
 -- | This family extracts a type of the field with given name from the first type in the list
 -- that has it.
