@@ -1,9 +1,10 @@
-resolver: lts-11.14
+resolver: lts-13.6
 
 packages:
 - '.'
 
-extra-deps: []
+extra-deps:
+  - hasbolt-0.1.3.5
 
 # https://github.com/commercialhaskell/stack/issues/3520
 ignore-revision-mismatch: true
