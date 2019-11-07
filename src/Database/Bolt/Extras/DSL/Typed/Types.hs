@@ -3,6 +3,7 @@
 {-# LANGUAGE PolyKinds              #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
+{-# LANGUAGE TypeInType             #-}
 
 module Database.Bolt.Extras.DSL.Typed.Types where
 
