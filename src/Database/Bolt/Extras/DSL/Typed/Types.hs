@@ -1,6 +1,7 @@
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE PolyKinds              #-}
+{-# LANGUAGE RecordWildCards        #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeInType             #-}
@@ -8,12 +9,14 @@
 module Database.Bolt.Extras.DSL.Typed.Types where
 
 import           Data.Kind                               (Constraint, Type)
+import           Data.Map.Strict                         (fromList)
 import           Data.Text                               (Text)
 import qualified Database.Bolt                           as B
 import           GHC.Generics                            (Rep)
 import           GHC.TypeLits                            (KnownSymbol, Symbol)
 
 import qualified Database.Bolt.Extras.DSL                as UT
+import qualified Database.Bolt.Extras.Graph              as G
 
 import           Database.Bolt.Extras.DSL.Typed.Families
 
@@ -175,3 +178,23 @@ NodeSelector ns <-: pp = UT.P ns UT.:<-!: pp
 -- | See 'UT.P'. This combinator forgets type-level information from the selectors.
 p :: NodeSelector a -> UT.PathSelector
 p (NodeSelector ns) = UT.P ns
+
+-- | Convert typed 'NodeSelector' to 'G.NodeGetter' from Graph API.
+typedNodeToGraph :: NodeSelector types -> G.NodeGetter
+typedNodeToGraph (NodeSelector UT.NodeSelector {..}) = G.NodeGetter
+  { ngboltId      = Nothing
+  , ngLabels      = nodeLabels
+  , ngProps       = fromList nodeProperties
+  , ngReturnProps = []
+  , ngIsReturned  = False
+  }
+
+-- | Convert typed 'RelSelector' to 'G.RelGetter' from Graph API.
+typedRelToGraph :: RelSelector types -> G.RelGetter
+typedRelToGraph (RelSelector UT.RelSelector {..}) = G.RelGetter
+  { rgboltId      = Nothing
+  , rgLabel       = Just relLabel
+  , rgProps       = fromList relProperties
+  , rgReturnProps = []
+  , rgIsReturned  = False
+  }

@@ -38,6 +38,12 @@ module Database.Bolt.Extras.DSL.Typed
   , (-:)
   , (<-:)
   , p
+
+  -- * Interaction with Graph API
+  --
+  -- $graph
+  , typedNodeToGraph
+  , typedRelToGraph
   ) where
 
 
@@ -52,6 +58,8 @@ import Database.Bolt.Extras.DSL.Typed.Instances ()
 >>> import Data.Text (Text, unpack)
 >>> import GHC.Generics (Generic)
 >>> import Database.Bolt.Extras (toCypher)
+>>> import Data.Function ((&))
+>>> import qualified Database.Bolt.Extras.Graph as G
 >>> toCypherN = putStrLn . unpack . toCypher  . unsafeNodeSelector
 >>> toCypherR = putStrLn . unpack . toCypher . unsafeRelSelector
 >>> toCypherP = putStrLn . unpack . toCypher
@@ -67,6 +75,7 @@ import Database.Bolt.Extras.DSL.Typed.Instances ()
 >>> data BinderLibrary = BinderLibrary deriving (Generic)
 >>> import Database.Bolt.Extras.DSL (createF, mergeF, Selector(..), formQuery, returnF)
 >>> toCypherQ = putStrLn . unpack . formQuery
+>>> formQueryG = putStrLn . unpack . G.formQuery @G.GetRequest []
 -}
 
 {- $selecting
@@ -187,4 +196,54 @@ Here is an example of a path constructed this way:
 
 >>> toCypherP (#binder .& lbl @Binder .& prop (#uuid =: "123") -: defR .& lbl @ELEMENT !->: #el)
 (binder:Binder{uuid:"123"})-[:ELEMENT]->(el)
+-}
+
+{- $graph
+
+This module is also interopable with 'Database.Bolt.Extras.Graph.Graph' API. 'NodeSelector' and
+'RelSelector' can be converted into 'Database.Bolt.Extras.Graph.NodeGetter' and
+'Database.Bolt.Extras.Graph.RelSelector' using 'typedNodeToGraph' and 'typedRelToGraph'.
+
+Here is an example of graph query using typed selectors:
+
+>>> import Database.Bolt.Extras.Graph
+>>> :{
+formQueryG $ emptyGraph
+ & addNode "binder"
+   (typedNodeToGraph
+      (defN .& lbl @Binder .& prop (#uuid =: "123-456"))
+      & isReturned
+      & withReturn allProps
+   )
+ & addNode "user"
+   (typedNodeToGraph
+      (defN .& lbl @User .& prop (#user =: "098-765"))
+      & isReturned
+      & withReturn allProps
+   )
+ & addRelation "user" "binder"
+   (typedRelToGraph
+      (defR .& lbl @USER_CREATED)
+      & isReturned
+      & withReturn allProps
+   )
+:}
+MATCH (user)-[user0binder :USER_CREATED {}]->(binder)
+, (binder :Binder {uuid:"123-456"})
+, (user :User {user:"098-765"})
+<BLANKLINE>
+WITH DISTINCT binder, user, user0binder
+RETURN { id: id(binder),
+  labels: labels(binder),
+  props: properties(binder)
+} as binder
+, { id: id(user),
+  labels: labels(user),
+  props: properties(user)
+} as user
+, { id: id(user0binder),
+  label: type(user0binder),
+  props: properties(user0binder)
+} as user0binder
+<BLANKLINE>
 -}
