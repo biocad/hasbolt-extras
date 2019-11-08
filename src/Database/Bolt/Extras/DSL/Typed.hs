@@ -22,6 +22,7 @@ module Database.Bolt.Extras.DSL.Typed
     SelectorLike(..)
   , lbl
   , prop
+  , propMaybe
   , (=:)
   , NodeSelector, RelSelector
   , defN
