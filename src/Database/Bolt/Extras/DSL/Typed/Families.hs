@@ -26,7 +26,9 @@ type family RecordHasField (field :: Symbol) (record :: k -> Type) :: Bool where
 -- | This family extracts the type of field with given name from Generic record in a 'Rep'.
 type family GetTypeFromRecord (field :: Symbol) (record :: k -> Type) :: Type where
   GetTypeFromRecord field (D1 _ (C1 _ sels)) = GetTypeFromRecord field sels
+  GetTypeFromRecord field (S1 ('MetaSel ('Just field) _ _ _) (Rec0 (Maybe typ))) = typ
   GetTypeFromRecord field (S1 ('MetaSel ('Just field) _ _ _) (Rec0 typ)) = typ
+  GetTypeFromRecord field (S1 ('MetaSel ('Just field) _ _ _) (Rec0 (Maybe typ) ) :*: _) = typ
   GetTypeFromRecord field (S1 ('MetaSel ('Just field) _ _ _) (Rec0 typ ) :*: _) = typ
   GetTypeFromRecord field (S1 ('MetaSel ('Just _) _ _ _) (Rec0 typ ) :*: r) =
     GetTypeFromRecord field r

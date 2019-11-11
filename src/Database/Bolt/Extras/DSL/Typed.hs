@@ -22,8 +22,10 @@ module Database.Bolt.Extras.DSL.Typed
     SelectorLike(..)
   , lbl
   , prop
+  , propMaybe
   , (=:)
   , NodeSelector, RelSelector
+  , nodeSelector, relSelector
   , defN
   , defR
 
@@ -40,19 +42,23 @@ module Database.Bolt.Extras.DSL.Typed
   ) where
 
 
-import Database.Bolt.Extras.DSL.Typed.Types
-import Database.Bolt.Extras.DSL.Typed.Instances ()
+import           Database.Bolt.Extras.DSL.Typed.Instances ()
+import           Database.Bolt.Extras.DSL.Typed.Types
 
 {- $setup
 >>> :set -XDeriveGeneric
 >>> :set -XTypeApplications
 >>> :set -XOverloadedLabels
 >>> :set -XOverloadedStrings
+>>> :load Database.Bolt.Extras.Graph Database.Bolt.Extras.DSL.Typed Database.Bolt.Extras.DSL
+>>> import Database.Bolt.Extras.DSL.Typed
 >>> import Data.Text (Text, unpack)
 >>> import GHC.Generics (Generic)
 >>> import Database.Bolt.Extras (toCypher)
->>> toCypherN = putStrLn . unpack . toCypher  . unsafeNodeSelector
->>> toCypherR = putStrLn . unpack . toCypher . unsafeRelSelector
+>>> import Data.Function ((&))
+>>> import qualified Database.Bolt.Extras.Graph as G
+>>> toCypherN = putStrLn . unpack . toCypher . nodeSelector
+>>> toCypherR = putStrLn . unpack . toCypher . relSelector
 >>> toCypherP = putStrLn . unpack . toCypher
 >>> data Binder = Binder { uuid :: Text } deriving (Generic)
 >>> data Foo = Foo { bar :: Bool, foo :: Int } deriving (Generic)
@@ -64,8 +70,9 @@ import Database.Bolt.Extras.DSL.Typed.Instances ()
 >>> data USER_CREATED = USER_CREATED { timestamp :: Int } deriving (Generic)
 >>> data Library = Library deriving (Generic)
 >>> data BinderLibrary = BinderLibrary deriving (Generic)
->>> import Database.Bolt.Extras.DSL (createF, mergeF, Selector(..), formQuery, returnF)
->>> toCypherQ = putStrLn . unpack . formQuery
+>>> import Database.Bolt.Extras.DSL as DSL (createF, mergeF, Selector(..), formQuery, returnF)
+>>> toCypherQ = putStrLn . unpack . DSL.formQuery
+>>> formQueryG = putStrLn . unpack . G.formQuery @G.GetRequest []
 -}
 
 {- $selecting
@@ -129,6 +136,58 @@ toCypherQ $ do
 :}
 MERGE (name:Name{name:"CT42"}) MERGE (user:User{user:"123-456"}) CREATE (lib:BinderLibrary:Library), (name)-[:NAME_OF]->(lib), (user)-[:USER_CREATED{timestamp:1572340394000}]->(lib) RETURN lib
 
+==== Dropping types
+
+It is possible to convert typed selectors to untyped ones from 'Database.Bolt.Extras.DSL.DSL' using
+'nodeSelector' and 'relSelector' funcions.
+
+==== Using with Graph api
+
+This module is also interopable with 'Database.Bolt.Extras.Graph.Graph' API. Here is an example
+of graph query using typed selectors.
+
+>>> import Database.Bolt.Extras.Graph
+>>> nToG = ngFromDSL . nodeSelector
+>>> rToG = rgFromDSL . relSelector
+>>> :{
+formQueryG $ emptyGraph
+ & addNode "binder"
+   (nToG
+      (defN .& lbl @Binder .& prop (#uuid =: "123-456"))
+      & isReturned
+      & withReturn allProps
+   )
+ & addNode "user"
+   (nToG
+      (defN .& lbl @User .& prop (#user =: "098-765"))
+      & isReturned
+      & withReturn allProps
+   )
+ & addRelation "user" "binder"
+   (rToG
+      (defR .& lbl @USER_CREATED)
+      & isReturned
+      & withReturn allProps
+   )
+:}
+MATCH (user)-[user0binder :USER_CREATED {}]->(binder)
+, (binder :Binder {uuid:"123-456"})
+, (user :User {user:"098-765"})
+<BLANKLINE>
+WITH DISTINCT binder, user, user0binder
+RETURN { id: id(binder),
+  labels: labels(binder),
+  props: properties(binder)
+} as binder
+, { id: id(user),
+  labels: labels(user),
+  props: properties(user)
+} as user
+, { id: id(user0binder),
+  label: type(user0binder),
+  props: properties(user0binder)
+} as user0binder
+<BLANKLINE>
 -}
 
 {- $safety

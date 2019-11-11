@@ -17,6 +17,17 @@ import qualified Database.Bolt.Extras.DSL                as UT
 
 import           Database.Bolt.Extras.DSL.Typed.Families
 
+{- $setup
+>>> :set -XDeriveGeneric
+>>> :set -XTypeApplications
+>>> :set -XOverloadedLabels
+>>> :load Database.Bolt.Extras.DSL.Typed.Instances
+>>> import Data.Text (unpack)
+>>> import GHC.Generics (Generic)
+>>> import Database.Bolt.Extras (toCypher)
+>>> toCypherN = putStrLn . unpack . toCypher  . nodeSelector
+-}
+
 -- | Class for Selectors that know type of their labels. This class is kind-polymorphic,
 -- so that instances may select a specific collection of labels they support.
 --
@@ -66,6 +77,15 @@ lbl
 lbl = withLabel
 
 -- | Shorter synonym for 'withProp'.
+--
+-- Properties of type @Maybe a@ are treated as properties of type @a@, since there is no difference
+-- between the two in Cypher.
+--
+-- >>> data Foo = Foo { foo :: Int, bar :: Maybe String } deriving Generic
+-- >>> toCypherN $ defN .& lbl @Foo .& prop (#foo =: 42)
+-- (:Foo{foo:42})
+-- >>> toCypherN $ defN .& lbl @Foo .& prop (#bar =: "hello")
+-- (:Foo{bar:"hello"})
 prop
   :: forall (field :: Symbol) (a :: k -> Type) (types :: k) (typ :: Type)
   .  SelectorLike a
@@ -74,6 +94,25 @@ prop
   => (SymbolS field, typ) -- ^ Field name along with its value. This pair should be constructed with '=:'.
   -> a types -> a types
 prop = withProp
+
+-- | A variant of 'prop' that accepts values in @Maybe@. If given @Nothing@, does nothing.
+--
+-- This works both for properties with @Maybe@ and without.
+--
+-- >>> data Foo = Foo { foo :: Int, bar :: Maybe String } deriving Generic
+-- >>> toCypherN $ defN .& lbl @Foo .& propMaybe (#foo =: Just 42)
+-- (:Foo{foo:42})
+-- >>> toCypherN $ defN .& lbl @Foo .& propMaybe (#bar =: Nothing)
+-- (:Foo)
+propMaybe
+  :: forall (field :: Symbol) (a :: k -> Type) (types :: k) (typ :: Type)
+  .  SelectorLike a
+  => HasField types field typ
+  => B.IsValue typ
+  => (SymbolS field, Maybe typ)
+  -> a types -> a types
+propMaybe (name, Just val) = withProp (name, val)
+propMaybe _                = id
 
 -- | Smart constructor for a pair of field name and its value. To be used with @OverloadedLabels@:
 --
@@ -85,14 +124,18 @@ prop = withProp
 --
 -- Node selectors remember arbitrary number of labels in a type-level list.
 newtype NodeSelector (typ :: [Type])
-  = NodeSelector { unsafeNodeSelector :: UT.NodeSelector }
+  = NodeSelector
+      { nodeSelector :: UT.NodeSelector -- ^ Convert to untyped 'UT.NodeSelector'.
+      }
     deriving (Show, Eq)
 
 -- | A wrapper around 'Database.Extras.DSL.RelSelector' with phantom type.
 --
 -- Relationship selectors remember at most one label in a type-level @Maybe@.
 newtype RelSelector (typ :: Maybe Type)
-  = RelSelector { unsafeRelSelector :: UT.RelSelector }
+  = RelSelector
+      { relSelector :: UT.RelSelector -- ^ Convert to untyped 'UT.RelSelector'.
+      }
     deriving (Show, Eq)
 
 newtype SymbolS (s :: Symbol) = SymbolS { getSymbol :: String }
@@ -136,3 +179,4 @@ NodeSelector ns <-: pp = UT.P ns UT.:<-!: pp
 -- | See 'UT.P'. This combinator forgets type-level information from the selectors.
 p :: NodeSelector a -> UT.PathSelector
 p (NodeSelector ns) = UT.P ns
+

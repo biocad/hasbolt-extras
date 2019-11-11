@@ -9,4 +9,5 @@ main =
   doctest
     [ "-isrc"
     , "src/Database/Bolt/Extras/DSL/Typed.hs"
+    , "src/Database/Bolt/Extras/DSL/Typed/Types.hs"
     ]

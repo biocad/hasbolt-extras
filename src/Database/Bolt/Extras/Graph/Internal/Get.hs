@@ -15,6 +15,7 @@ module Database.Bolt.Extras.Graph.Internal.Get
     NodeGetter (..)
   , RelGetter (..)
   , GetterLike (..)
+  , ngFromDSL, rgFromDSL
   , (#)
   , defaultNode
   , defaultRel
@@ -79,6 +80,7 @@ import           Database.Bolt.Extras                              (BoltId, GetB
                                                                     NodeLike (..),
                                                                     ToCypher (..),
                                                                     URelationLike (..))
+import qualified Database.Bolt.Extras.DSL                          as DSL
 import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph,
                                                                     NodeName,
                                                                     relationName,
@@ -116,6 +118,26 @@ data RelGetter = RelGetter { rgboltId      :: Maybe BoltId     -- ^ known 'BoltI
                            , rgIsReturned  :: Bool             -- ^ whether to return this relation or not
                            }
   deriving (Show, Eq)
+
+-- | Create a 'NodeGetter' from 'DSL.NodeSelector' from the DSL. 'ngIsReturned' is set to @False@.
+ngFromDSL :: DSL.NodeSelector-> NodeGetter
+ngFromDSL DSL.NodeSelector {..} = NodeGetter
+  { ngboltId      = Nothing
+  , ngLabels      = nodeLabels
+  , ngProps       = fromList nodeProperties
+  , ngReturnProps = []
+  , ngIsReturned  = False
+  }
+
+-- | Create a 'RelGetter' from 'DSL.RelSelector' from the DSL. 'rgIsReturned' is set to @False@.
+rgFromDSL :: DSL.RelSelector -> RelGetter
+rgFromDSL DSL.RelSelector {..} = RelGetter
+  { rgboltId      = Nothing
+  , rgLabel       = Just relLabel
+  , rgProps       = fromList relProperties
+  , rgReturnProps = []
+  , rgIsReturned  = False
+  }
 
 -- | A synonym for '&'. Kept for historical reasons.
 (#) :: a -> (a -> b) -> b

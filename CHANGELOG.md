@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.0.24] - 2019-11-08
+### Added
+- Support for `Maybe` fields in typed selectors;
+- Integration of typed selectors and Graph API.
+
 ## [0.0.0.23] - 2019-11-07
 ### Added
 - Type-safe selectors for nodes and relationships.
