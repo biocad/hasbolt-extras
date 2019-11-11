@@ -1,7 +1,6 @@
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE PolyKinds              #-}
-{-# LANGUAGE RecordWildCards        #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeInType             #-}
@@ -9,14 +8,12 @@
 module Database.Bolt.Extras.DSL.Typed.Types where
 
 import           Data.Kind                               (Constraint, Type)
-import           Data.Map.Strict                         (fromList)
 import           Data.Text                               (Text)
 import qualified Database.Bolt                           as B
 import           GHC.Generics                            (Rep)
 import           GHC.TypeLits                            (KnownSymbol, Symbol)
 
 import qualified Database.Bolt.Extras.DSL                as UT
-import qualified Database.Bolt.Extras.Graph              as G
 
 import           Database.Bolt.Extras.DSL.Typed.Families
 
@@ -24,11 +21,11 @@ import           Database.Bolt.Extras.DSL.Typed.Families
 >>> :set -XDeriveGeneric
 >>> :set -XTypeApplications
 >>> :set -XOverloadedLabels
+>>> :load Database.Bolt.Extras.DSL.Typed.Instances
 >>> import Data.Text (unpack)
 >>> import GHC.Generics (Generic)
 >>> import Database.Bolt.Extras (toCypher)
->>> import Database.Bolt.Extras.DSL.Typed.Instances
->>> toCypherN = putStrLn . unpack . toCypher  . unsafeNodeSelector
+>>> toCypherN = putStrLn . unpack . toCypher  . nodeSelector
 -}
 
 -- | Class for Selectors that know type of their labels. This class is kind-polymorphic,
@@ -127,14 +124,18 @@ propMaybe _                = id
 --
 -- Node selectors remember arbitrary number of labels in a type-level list.
 newtype NodeSelector (typ :: [Type])
-  = NodeSelector { unsafeNodeSelector :: UT.NodeSelector }
+  = NodeSelector
+      { nodeSelector :: UT.NodeSelector -- ^ Convert to untyped 'UT.NodeSelector'.
+      }
     deriving (Show, Eq)
 
 -- | A wrapper around 'Database.Extras.DSL.RelSelector' with phantom type.
 --
 -- Relationship selectors remember at most one label in a type-level @Maybe@.
 newtype RelSelector (typ :: Maybe Type)
-  = RelSelector { unsafeRelSelector :: UT.RelSelector }
+  = RelSelector
+      { relSelector :: UT.RelSelector -- ^ Convert to untyped 'UT.RelSelector'.
+      }
     deriving (Show, Eq)
 
 newtype SymbolS (s :: Symbol) = SymbolS { getSymbol :: String }
@@ -179,22 +180,3 @@ NodeSelector ns <-: pp = UT.P ns UT.:<-!: pp
 p :: NodeSelector a -> UT.PathSelector
 p (NodeSelector ns) = UT.P ns
 
--- | Convert typed 'NodeSelector' to 'G.NodeGetter' from Graph API.
-typedNodeToGraph :: NodeSelector types -> G.NodeGetter
-typedNodeToGraph (NodeSelector UT.NodeSelector {..}) = G.NodeGetter
-  { ngboltId      = Nothing
-  , ngLabels      = nodeLabels
-  , ngProps       = fromList nodeProperties
-  , ngReturnProps = []
-  , ngIsReturned  = False
-  }
-
--- | Convert typed 'RelSelector' to 'G.RelGetter' from Graph API.
-typedRelToGraph :: RelSelector types -> G.RelGetter
-typedRelToGraph (RelSelector UT.RelSelector {..}) = G.RelGetter
-  { rgboltId      = Nothing
-  , rgLabel       = Just relLabel
-  , rgProps       = fromList relProperties
-  , rgReturnProps = []
-  , rgIsReturned  = False
-  }
