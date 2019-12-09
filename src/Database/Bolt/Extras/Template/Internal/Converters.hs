@@ -4,7 +4,9 @@
 module Database.Bolt.Extras.Template.Internal.Converters
  (
     makeNodeLike
+  , makeNodeLikeWith
   , makeURelationLike
+  , makeURelationLikeWith
   ) where
 
 import           Control.Lens               (view, _1)
@@ -75,16 +77,28 @@ uRelationLikeClass = BiClassInfo { className    = ''URelationLike
 -- > Bar {baz = 42.0, quux = "Loren ipsum", quuz = 7}
 --
 makeNodeLike :: Name -> Q [Dec]
-makeNodeLike = makeBiClassInstance nodeLikeClass
+makeNodeLike name = makeBiClassInstance nodeLikeClass name id
 
+-- | The same as 'makeNodeLike', but applies a function to all field names before storing them
+-- in Neo4j, like @aeson@ does.
+--
+-- This can be used with @fieldLabelModifier@ from 'Data.Aeson.Types.Options' in @aeson@:
+--
+-- > makeNodeLikeWith ''Foo $ fieldLabelModifier $ aesonPrefix camelCase
+--
+makeNodeLikeWith :: Name -> (String -> String) -> Q [Dec]
+makeNodeLikeWith = makeBiClassInstance nodeLikeClass
 
 -- | Make an instance of 'URelationLike' class.
 -- Transformations are the same as in 'NodeLike' instance declaration with the only one difference:
 -- 'URelationship' holds only one label (or type), but 'Node' holds list of labels.
 --
 makeURelationLike :: Name -> Q [Dec]
-makeURelationLike = makeBiClassInstance uRelationLikeClass
+makeURelationLike name = makeBiClassInstance uRelationLikeClass name id
 
+-- | As 'makeNodeLikeWith'.
+makeURelationLikeWith :: Name -> (String -> String) -> Q [Dec]
+makeURelationLikeWith = makeBiClassInstance uRelationLikeClass
 
 -- | Declare an instance of `bijective` class using TemplateHaskell.
 -- It works as follows:
@@ -115,8 +129,8 @@ makeURelationLike = makeBiClassInstance uRelationLikeClass
 -- >      , nodeProps = fromList [("specie", T "text value"), ("vgen", F %float_value), ("fr", F %float_value), ("sim", F %float_value), ("germline", T "text value")]
 -- >     }
 --
-makeBiClassInstance :: BiClassInfo -> Name -> Q [Dec]
-makeBiClassInstance BiClassInfo {..} typeCon = do
+makeBiClassInstance :: BiClassInfo -> Name -> (String -> String) -> Q [Dec]
+makeBiClassInstance BiClassInfo {..} typeCon fieldLabelModifier = do
   -- reify function gives Info about Name such as constructor name and its fields. See: https://hackage.haskell.org/package/template-haskell-2.12.0.0/docs/Language-Haskell-TH.html#t:Info
   TyConI declaration <- reify typeCon
 
@@ -136,8 +150,8 @@ makeBiClassInstance BiClassInfo {..} typeCon = do
   fresh <- newName "x"
 
   -- constructs `bijective` class functions (phi and phiInv – toClause and fromClause correspondingly here).
-  toClause   <- makeToClause label dataName fresh dataFields
-  fromClause <- makeFromClause label consName fresh dataFields
+  toClause   <- makeToClause label dataName fresh dataFields fieldLabelModifier
+  fromClause <- makeFromClause label consName fresh dataFields fieldLabelModifier
 
   -- function declarations themselves.
   let bodyDecl = [FunD classToFun [toClause], FunD classFromFun [fromClause]]
@@ -166,9 +180,10 @@ getTypeCons otherDecl = error $ $currentLoc ++ "unsupported declaration: " ++ sh
 
 -- | Describes the body of conversion to target type function.
 --
-makeToClause :: String -> Name -> Name -> [Name] -> Q Clause
-makeToClause label dataCons varName dataFields | null dataFields = pure $ Clause [WildP] (NormalB result) []
-                                               | otherwise       = pure $ Clause [VarP varName] (NormalB result) []
+makeToClause :: String -> Name -> Name -> [Name] -> (String -> String) -> Q Clause
+makeToClause label dataCons varName dataFields fieldLabelModifier
+  | null dataFields = pure $ Clause [WildP] (NormalB result) []
+  | otherwise       = pure $ Clause [VarP varName] (NormalB result) []
   where
     -- apply field record to a data.
     getValue :: Name -> Exp
@@ -189,7 +204,7 @@ makeToClause label dataCons varName dataFields | null dataFields = pure $ Clause
     -- `key` is field record name.
     -- `value` is the data that corresponding field holds.
     pairs :: [Exp]
-    pairs = zipWith (\fld val -> TupE [strToTextE fld, val]) fieldNames valuesExp
+    pairs = zipWith (\fld val -> TupE [strToTextE $ fieldLabelModifier fld, val]) fieldNames valuesExp
 
     -- Map representation:
     -- mapE = fromList pairs
@@ -215,8 +230,8 @@ makeToClause label dataCons varName dataFields | null dataFields = pure $ Clause
 
 -- | Describes the body of conversion from target type function.
 --
-makeFromClause :: String -> Name -> Name -> [Name] -> Q Clause
-makeFromClause label conName varName dataFields = do
+makeFromClause :: String -> Name -> Name -> [Name] -> (String -> String) -> Q Clause
+makeFromClause label conName varName dataFields fieldLabelModifier = do
 
   -- Obtain all data field types.
   -- 'reify' returns 'Q Info', and we are interested in its 'VarI' constructur which provides information about variable: name and type.
@@ -228,7 +243,7 @@ makeFromClause label conName varName dataFields = do
 
   -- fieldNames :: [Text]
   -- field records of the target type.
-  let fieldNames = fmap (pack . nameBase) dataFields
+  let fieldNames = fmap (pack . fieldLabelModifier . nameBase) dataFields
 
   -- maybeLabels :: [(Text, Bool)]
   -- field records of the target type and 'isMaybe' check results.
