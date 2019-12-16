@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RecordWildCards   #-}
-{-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -fno-warn-orphans -Wno-deprecations #-}
 
 module Database.Bolt.Extras.Graph.Internal.Put
   (
@@ -19,10 +19,8 @@ import           Data.Monoid                                       ((<>))
 import           Data.Text                                         (Text,
                                                                     intercalate,
                                                                     pack)
-import           Database.Bolt                                     (Node (..), RecordValue (..),
-                                                                    URelationship (..),
-                                                                    Value (..),
-                                                                    exact)
+import           Database.Bolt                                     (Node (..), URelationship (..),
+                                                                    Value (..))
 import           Database.Bolt.Extras                              (BoltId, ToCypher (..),
                                                                     fromInt)
 import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph (..),
@@ -31,6 +29,7 @@ import           Database.Bolt.Extras.Graph.Internal.AbstractGraph (Graph (..),
 import           Database.Bolt.Extras.Graph.Internal.Class         (Extractable (..),
                                                                     Requestable (..),
                                                                     Returnable (..))
+import           Database.Bolt.Extras.Utils                        (exact)
 import           NeatInterpolation                                 (text)
 
 ------------------------------------------------------------------------------------------------

@@ -4,7 +4,7 @@ packages:
 - '.'
 
 extra-deps:
-  - hasbolt-0.1.3.5
+  - hasbolt-0.1.4.0
 
 # https://github.com/commercialhaskell/stack/issues/3520
 ignore-revision-mismatch: true
