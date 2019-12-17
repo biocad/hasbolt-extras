@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.1.0] - 2019-12-17
+### Changed
+- Use `hasbolt` 0.1.4.0.
+### Added
+- Compatibility function `exact` from older `hasbolt`.
+
 ## [0.0.0.25] - 2019-12-07
 ### Added
 - `makeNodeLikeWith` and `makeURelationLikeWith` functions.
