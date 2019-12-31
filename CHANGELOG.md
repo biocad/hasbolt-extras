@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.1.1] - 2019-12-31
+### Added
+- `param` combinator to add named parameters to selectors.
+
 ## [0.0.1.0] - 2019-12-17
 ### Changed
 - Use `hasbolt` 0.1.4.0.
