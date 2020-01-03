@@ -58,8 +58,8 @@ type family Assert (err :: Constraint) (a :: k) :: k where
 -- | A version of 'Assert' that returns trivial constraint @()@ when argument is not stuck,
 -- discarding its actual value.
 type family AssertC (err :: Constraint) (a :: k) :: Constraint where
-  Assert _ T1 = Any
-  Assert _ k = ()
+  AssertC _ T1 = Any
+  AssertC _ k = ()
 
 -- | Error text for the case when records do no have the required field.
 type family NoFieldError (field :: Symbol) (types :: [Type]) :: k where
