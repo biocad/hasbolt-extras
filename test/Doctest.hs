@@ -10,4 +10,5 @@ main =
     [ "-isrc"
     , "src/Database/Bolt/Extras/DSL/Typed.hs"
     , "src/Database/Bolt/Extras/DSL/Typed/Types.hs"
+    , "src/Database/Bolt/Extras/DSL/Typed/Parameters.hs"
     ]

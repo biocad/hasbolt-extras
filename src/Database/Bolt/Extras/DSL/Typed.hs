@@ -40,17 +40,29 @@ module Database.Bolt.Extras.DSL.Typed
   , (-:)
   , (<-:)
   , p
+
+  -- * Queries with parameters
+  --
+  -- $params
+
+  , CypherDSLParams(..)
+  , queryWithParams
+
+  -- ** Implementation details
+  , QueryWithParams(..)
   ) where
 
 
 import           Database.Bolt.Extras.DSL.Typed.Instances ()
 import           Database.Bolt.Extras.DSL.Typed.Types
+import           Database.Bolt.Extras.DSL.Typed.Parameters
 
 {- $setup
 >>> :set -XDeriveGeneric
 >>> :set -XTypeApplications
 >>> :set -XOverloadedLabels
 >>> :set -XOverloadedStrings
+>>> :set -XDataKinds
 >>> :load Database.Bolt.Extras.Graph Database.Bolt.Extras.DSL.Typed Database.Bolt.Extras.DSL
 >>> import Database.Bolt.Extras.DSL.Typed
 >>> import Data.Text (Text, unpack)
@@ -248,4 +260,20 @@ Here is an example of a path constructed this way:
 
 >>> toCypherP (#binder .& lbl @Binder .& prop (#uuid =: "123") -: defR .& lbl @ELEMENT !->: #el)
 (binder:Binder{uuid:"123"})-[:ELEMENT]->(el)
+-}
+
+{- $params
+
+There is an option to annotate queries ('CypherDSL') with parameters they accept, like this:
+
+> fooQ :: CypherDSLParams '[ '("foo", Int), '("bar", Text) ]
+> fooQ = CypherDSLParams $ do
+>     matchF [ PS $ p $ #n .& lbl @Foo .& param (#foo =: "foo") .& param (#bar =: "bar")
+>     returnF ["n"]
+
+To make sure that all parameters are filled, one can use 'queryWithParams' function:
+
+> records <- queryWithParams fooQ (#foo =: 42) (#bar =: "Hello")
+
+See below for more examples.
 -}
