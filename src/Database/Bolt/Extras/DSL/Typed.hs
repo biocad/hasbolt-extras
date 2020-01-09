@@ -264,14 +264,19 @@ Here is an example of a path constructed this way:
 
 {- $params
 
-There is an option to annotate queries ('CypherDSL') with parameters they accept, like this:
+There is an option to annotate queries ('Database.Bolt.Extras.DSL.CypherDSL') with parameters they accept,
+like this:
 
 > fooQ :: CypherDSLParams '[ '("foo", Int), '("bar", Text) ]
 > fooQ = CypherDSLParams $ do
 >     matchF [ PS $ p $ #n .& lbl @Foo .& param (#foo =: "foo") .& param (#bar =: "bar")
 >     returnF ["n"]
 
-To make sure that all parameters are filled, one can use 'queryWithParams' function:
+This will render to the following Cypher expression:
+
+> match (n: Foo {foo: $foo, bar: $bar}) return n
+
+To make sure that all parameters are filled, use 'queryWithParams' function:
 
 > records <- queryWithParams fooQ (#foo =: 42) (#bar =: "Hello")
 

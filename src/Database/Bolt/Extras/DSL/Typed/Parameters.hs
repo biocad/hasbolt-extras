@@ -58,8 +58,11 @@ instance MonadIO m => QueryWithParams '[] m (BoltActionT m [Record]) where
 
 -- | Recursion case: append the next parameter to accumulator and to function's type.
 instance
-  (IsValue typ, QueryWithParams rest m fun)
-  => QueryWithParams ('(field, typ) ': rest) m ((SymbolS field, typ) -> fun)
+  (IsValue typ, QueryWithParams rest m fun) =>
+  QueryWithParams
+    ('(field, typ) ': rest)
+    m
+    ((SymbolS field, typ) -> fun)
   where
 
   collectParams dsl params (SymbolS s, a) = collectParams @rest @m dsl ((pack s, toValue a) : params)
