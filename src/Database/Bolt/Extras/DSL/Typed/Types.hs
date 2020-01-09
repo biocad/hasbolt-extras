@@ -47,6 +47,9 @@ class SelectorLike (a :: k -> Type) where
   -- of labels.
   type HasField (types :: k) (field :: Symbol) (typ :: Type) :: Constraint
 
+  -- | This constraint checks that field with this name exists in the collection, with any type.
+  type HasField' (types :: k) (field :: Symbol) :: Constraint
+
   -- | Set an identifier — Cypher variable name.
   withIdentifier :: Text -> a types -> a types
 
@@ -62,6 +65,14 @@ class SelectorLike (a :: k -> Type) where
     :: HasField types field typ
     => B.IsValue typ
     => (SymbolS field, typ)
+    -> a types
+    -> a types
+
+  -- | Add a property as named parameter (@$foo@). Only checks that given property exists,
+  -- no matter its type.
+  withParam
+    :: HasField' types field
+    => (SymbolS field, Text)
     -> a types
     -> a types
 
@@ -113,6 +124,28 @@ propMaybe
   -> a types -> a types
 propMaybe (name, Just val) = withProp (name, val)
 propMaybe _                = id
+
+-- | Shorter synonym for 'withParam'.
+--
+-- >>> data Foo = Foo { foo :: Int, bar :: Maybe String } deriving Generic
+-- >>> toCypherN $ defN .& lbl @Foo .& param (#foo =: "foo")
+-- (:Foo{foo:$foo})
+-- >>> toCypherN $ defN .& lbl @Foo .& prop (#foo =: 42) .& param (#bar =: "bar")
+-- (:Foo{foo:42,bar:$bar})
+-- >>> toCypherN $ defN .& lbl @Foo .& param (#baz =: "baz")
+-- ...
+-- ... There is no field "baz" in any of the records
+-- ... '[Foo]
+-- ...
+--
+-- __NOTE__: this will add @$@ symbol to parameter name automatically.
+param
+  :: forall (field :: Symbol) (a :: k -> Type) (types :: k)
+  .  SelectorLike a
+  => HasField' types field
+  => (SymbolS field, Text)
+  -> a types -> a types
+param = withParam
 
 -- | Smart constructor for a pair of field name and its value. To be used with @OverloadedLabels@:
 --

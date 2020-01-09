@@ -22,7 +22,7 @@ import           Database.Bolt.Extras.DSL.Internal.Types (Conds (..), Expr (..),
 
 -- | A synonym for 'Free' DSL.
 --
-type CypherDSL a = Free Expr ()
+type CypherDSL a = Free Expr a
 
 -- | Prepare 'CREATE' query
 --

@@ -15,7 +15,7 @@ module Database.Bolt.Extras.DSL.Typed.Instances where
 import           Data.Coerce                             (coerce)
 import           Data.Function                           ((&))
 import           Data.Kind                               (Type)
-import           Data.Text                               (pack)
+import           Data.Text                               (Text, pack)
 import           GHC.Exts                                (proxy#)
 import           GHC.Generics                            (Rep)
 import           GHC.OverloadedLabels                    (IsLabel (..))
@@ -43,6 +43,8 @@ instance SelectorLike NodeSelector where
   type AddType (types :: [Type]) (typ :: Type) = typ ': types
   type HasField (types :: [Type]) (field :: Symbol) (typ :: Type) =
     Assert (NoFieldError field types) (GetTypeFromList field types) ~ typ
+  type HasField' (types :: [Type]) (field :: Symbol) =
+    AssertC (NoFieldError field types) (GetTypeFromList field types)
 
   withIdentifier = coerce $ UT.withIdentifier @UT.NodeSelector
   withLabel
@@ -57,6 +59,11 @@ instance SelectorLike NodeSelector where
     .  B.IsValue typ
     => (SymbolS field, typ) -> NodeSelector types -> NodeSelector types
   withProp (SymbolS field, val) = coerce $ UT.withProp @UT.NodeSelector $ pack field B.=: val
+
+  withParam
+    :: forall (field :: Symbol) (types :: [Type])
+    .  (SymbolS field, Text) -> NodeSelector types -> NodeSelector types
+  withParam (SymbolS field, name) = coerce $ UT.withParam @UT.NodeSelector (pack field, name)
 
 instance SelectorLike RelSelector where
   type CanAddType 'Nothing = ()
@@ -74,6 +81,13 @@ instance SelectorLike RelSelector where
         )
   type HasField ('Just record) (field :: Symbol) (typ :: Type) =
     Assert (NoFieldError field '[record]) (GetTypeFromRecord field (Rep record)) ~ typ
+  type HasField' 'Nothing (field :: Symbol)
+    = TypeError
+        ('Text "Tried to set property " ':<>: 'ShowType field
+         ':<>: 'Text " on a relationship without label!"
+        )
+  type HasField' ('Just record) (field :: Symbol) =
+    Assert (NoFieldError field '[record]) (RecordHasField field (Rep record)) ~ 'True
 
   withIdentifier = coerce $ UT.withIdentifier @UT.RelSelector
   withLabel
@@ -89,3 +103,8 @@ instance SelectorLike RelSelector where
     .  B.IsValue typ
     => (SymbolS field, typ) -> RelSelector types -> RelSelector types
   withProp (SymbolS field, val) = coerce $ UT.withProp @UT.RelSelector $ pack field B.=: val
+
+  withParam
+    :: forall (field :: Symbol) (types :: Maybe Type)
+    .  (SymbolS field, Text) -> RelSelector types -> RelSelector types
+  withParam (SymbolS field, name) = coerce $ UT.withParam @UT.RelSelector (pack field, name)

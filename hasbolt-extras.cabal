@@ -1,5 +1,5 @@
 name:           hasbolt-extras
-version:        0.0.1.0
+version:        0.0.1.1
 synopsis:       Extras for hasbolt library
 description:    Extras for hasbolt library
 homepage:       https://github.com/biocad/hasbolt-extras#readme
@@ -44,6 +44,7 @@ library
                      , Database.Bolt.Extras.DSL.Typed.Types
                      , Database.Bolt.Extras.DSL.Typed.Families
                      , Database.Bolt.Extras.DSL.Typed.Instances
+                     , Database.Bolt.Extras.DSL.Typed.Parameters
 
                      , Database.Bolt.Extras.Graph.Internal.AbstractGraph
                      , Database.Bolt.Extras.Graph.Internal.Class

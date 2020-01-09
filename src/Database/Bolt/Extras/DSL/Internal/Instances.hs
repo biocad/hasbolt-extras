@@ -34,11 +34,13 @@ instance SelectorLike NodeSelector where
     withIdentifier idx node = node { nodeIdentifier = Just idx }
     withLabel lbl node      = node { nodeLabels = lbl : nodeLabels node }
     withProp prop node      = node { nodeProperties = prop : nodeProperties node }
+    withParam prop node     = node { nodeParams = prop : nodeParams node }
 
 instance SelectorLike RelSelector where
     withIdentifier idx rel = rel { relIdentifier = Just idx }
     withLabel lbl rel      = rel { relLabel = lbl }
     withProp prop rel      = rel { relProperties = prop : relProperties rel }
+    withParam prop rel     = rel { relParams = prop : relParams rel }
 
 instance ToCypher NodeSelector where
   toCypher NodeSelector{..} = execWriter $ do
@@ -50,10 +52,22 @@ instance ToCypher NodeSelector where
       [] -> pure ()
       _  -> tell $ toCypher nodeLabels
     case nodeProperties of
-      [] -> pure ()
-      _  -> do tell "{"
-               tell $ toCypher nodeProperties
-               tell "}"
+      [] -> case nodeParams of
+              [] -> pure ()
+              _ -> do
+                tell "{"
+                tell $ toCypher nodeParams
+                tell "}"
+      _ -> do
+        tell "{"
+        tell $ toCypher nodeProperties
+        case nodeParams of
+          [] -> pure ()
+          _ -> do
+            tell ","
+            tell $ toCypher nodeParams
+        tell "}"
+
     tell ")"
 
 instance ToCypher RelSelector where
@@ -66,10 +80,22 @@ instance ToCypher RelSelector where
       "" -> pure ()
       _  -> tell $ toCypher relLabel
     case relProperties of
-      [] -> pure ()
-      _  -> do tell "{"
-               tell $ toCypher relProperties
-               tell "}"
+      [] -> case relParams of
+              [] -> pure ()
+              _ -> do
+                tell "{"
+                tell $ toCypher relParams
+                tell "}"
+      _ -> do
+        tell "{"
+        tell $ toCypher relProperties
+        case relParams of
+          [] -> pure ()
+          _ -> do
+            tell ","
+            tell $ toCypher relParams
+        tell "}"
+
     tell "]"
 
 instance ToCypher PathSelector where

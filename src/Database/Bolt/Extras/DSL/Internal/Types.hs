@@ -42,6 +42,7 @@ class SelectorLike a where
    withIdentifier :: Text -> a -> a
    withLabel      :: Text -> a -> a
    withProp       :: (Text, Value) -> a -> a
+   withParam      :: (Text, Text) -> a -> a
 
 -- | Selector for 'Node's.
 --
@@ -54,6 +55,7 @@ class SelectorLike a where
 data NodeSelector = NodeSelector { nodeIdentifier :: Maybe Text
                                  , nodeLabels     :: [Text]
                                  , nodeProperties :: [(Text, Value)]
+                                 , nodeParams     :: [(Text, Text)]
                                  }
   deriving (Show, Eq)
 
@@ -63,6 +65,7 @@ data NodeSelector = NodeSelector { nodeIdentifier :: Maybe Text
 data RelSelector = RelSelector { relIdentifier :: Maybe Text
                                , relLabel      :: Text
                                , relProperties :: [(Text, Value)]
+                               , relParams     :: [(Text, Text)]
                                }
   deriving (Show, Eq)
 
@@ -154,7 +157,7 @@ data Expr next = Create Selectors next        -- ^ CREATE query
 
 -- | Empty 'NodeSelector'.
 defaultNode :: NodeSelector
-defaultNode = NodeSelector Nothing [] []
+defaultNode = NodeSelector Nothing [] [] []
 
 -- | Shorter synonym for 'defaultRel'.
 defN :: NodeSelector
@@ -162,7 +165,7 @@ defN = defaultNode
 
 -- | Empty 'RelSelector'.
 defaultRel :: RelSelector
-defaultRel = RelSelector Nothing "" []
+defaultRel = RelSelector Nothing "" [] []
 
 -- | Shorter synonym for 'defaultRel'.
 defR :: RelSelector

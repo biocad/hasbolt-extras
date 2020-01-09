@@ -59,8 +59,13 @@ instance ToCypher [Label] where
 instance ToCypher Property where
   toCypher (propTitle, value) = T.concat [propTitle, pack ":", toCypher value]
 
+instance ToCypher (Text, Text) where
+  toCypher (propTitle, param) = propTitle <> ":$" <> param
+
 -- | Several properties are formatted with concatenation.
 --
 instance ToCypher [Property] where
   toCypher = T.intercalate "," . map toCypher
 
+instance ToCypher [(Text, Text)] where
+  toCypher = T.intercalate "," . map toCypher

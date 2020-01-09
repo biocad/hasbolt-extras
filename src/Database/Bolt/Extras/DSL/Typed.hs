@@ -23,6 +23,7 @@ module Database.Bolt.Extras.DSL.Typed
   , lbl
   , prop
   , propMaybe
+  , param
   , (=:)
   , NodeSelector, RelSelector
   , nodeSelector, relSelector
@@ -39,17 +40,29 @@ module Database.Bolt.Extras.DSL.Typed
   , (-:)
   , (<-:)
   , p
+
+  -- * Queries with parameters
+  --
+  -- $params
+
+  , CypherDSLParams(..)
+  , queryWithParams
+
+  -- ** Implementation details
+  , QueryWithParams(..)
   ) where
 
 
 import           Database.Bolt.Extras.DSL.Typed.Instances ()
 import           Database.Bolt.Extras.DSL.Typed.Types
+import           Database.Bolt.Extras.DSL.Typed.Parameters
 
 {- $setup
 >>> :set -XDeriveGeneric
 >>> :set -XTypeApplications
 >>> :set -XOverloadedLabels
 >>> :set -XOverloadedStrings
+>>> :set -XDataKinds
 >>> :load Database.Bolt.Extras.Graph Database.Bolt.Extras.DSL.Typed Database.Bolt.Extras.DSL
 >>> import Database.Bolt.Extras.DSL.Typed
 >>> import Data.Text (Text, unpack)
@@ -87,6 +100,8 @@ extended with the following combinators:
 - 'lbl' adds a label represented by some Haskell type
 - 'prop' adds a new property, making sure that this property exists in one of the labels and
   has correct type
+- 'param' adds a new property with named parameter (@$foo@ syntax in Cypher), making sure that
+  this property exists in one of the labels
 
 Typically selectors are chained by '.&' starting from 'defN' or 'defR' like this:
 
@@ -117,7 +132,7 @@ But relations have at most one:
 
 ==== Complex queries
 
-These selectors are fully compatible with the 'Database.Bolt.Extras.DSL.DSL':
+These selectors are fully compatible with the "Database.Bolt.Extras.DSL":
 
 >>> :{
 toCypherQ $ do
@@ -138,12 +153,12 @@ MERGE (name:Name{name:"CT42"}) MERGE (user:User{user:"123-456"}) CREATE (lib:Bin
 
 ==== Dropping types
 
-It is possible to convert typed selectors to untyped ones from 'Database.Bolt.Extras.DSL.DSL' using
+It is possible to convert typed selectors to untyped ones from "Database.Bolt.Extras.DSL" using
 'nodeSelector' and 'relSelector' funcions.
 
 ==== Using with Graph api
 
-This module is also interopable with 'Database.Bolt.Extras.Graph.Graph' API. Here is an example
+This module is also interopable with "Database.Bolt.Extras.Graph" API. Here is an example
 of graph query using typed selectors.
 
 >>> import Database.Bolt.Extras.Graph
@@ -233,7 +248,7 @@ the type of literal @42@, which is @Num a => a@.
 
 {- $paths
 
-This module is completely interopable with path selectors from 'Database.Bolt.Extras.DSL.DSL' —
+This module is completely interopable with path selectors from "Database.Bolt.Extras.DSL" —
 adding a 'NodeSelector' or 'RelSelector' to path simply drops all type information, converting it
 into untyped variant.
 
@@ -245,4 +260,25 @@ Here is an example of a path constructed this way:
 
 >>> toCypherP (#binder .& lbl @Binder .& prop (#uuid =: "123") -: defR .& lbl @ELEMENT !->: #el)
 (binder:Binder{uuid:"123"})-[:ELEMENT]->(el)
+-}
+
+{- $params
+
+There is an option to annotate queries ('Database.Bolt.Extras.DSL.CypherDSL') with parameters they accept,
+like this:
+
+> fooQ :: CypherDSLParams '[ '("foo", Int), '("bar", Text) ]
+> fooQ = CypherDSLParams $ do
+>     matchF [ PS $ p $ #n .& lbl @Foo .& param (#foo =: "foo") .& param (#bar =: "bar")
+>     returnF ["n"]
+
+This will render to the following Cypher expression:
+
+> match (n: Foo {foo: $foo, bar: $bar}) return n
+
+To make sure that all parameters are filled, use 'queryWithParams' function:
+
+> records <- queryWithParams fooQ (#foo =: 42) (#bar =: "Hello")
+
+See below for more examples.
 -}
