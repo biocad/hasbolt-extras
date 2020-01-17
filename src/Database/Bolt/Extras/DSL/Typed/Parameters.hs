@@ -30,6 +30,7 @@ import           Database.Bolt.Extras.DSL.Typed.Types       (SymbolS (..))
 >>> :set -XOverloadedLabels
 >>> :set -XDataKinds
 >>> :set -XOverloadedStrings
+>>> :set -XTypeOperators
 >>> :load Database.Bolt.Extras.DSL.Typed.Instances Database.Bolt.Extras.DSL.Typed.Parameters
 >>> import Control.Monad.IO.Class
 >>> import Database.Bolt (BoltActionT, Record)
@@ -39,6 +40,8 @@ import           Database.Bolt.Extras.DSL.Typed.Types       (SymbolS (..))
 
 -- | A wrapper around arbitrary 'CypherDSL' expression which stores type-level list of named
 -- parameters (@$foo@) with their types.
+--
+-- It is convenient to write signatures using '(=:)' type synonym.
 newtype CypherDSLParams (params :: [(Symbol, Type)]) (a :: Type)
   = CypherDSLParams (CypherDSL a)
 
@@ -68,7 +71,7 @@ instance (IsValue typ, QueryWithParams rest m fun)
 --
 -- A couple of examples:
 --
--- >>> dsl = CypherDSLParams (returnF []) :: CypherDSLParams '[ '("foo", Int), '("bar", Text) ] ()
+-- >>> dsl = CypherDSLParams (returnF []) :: CypherDSLParams '["foo" =: Int, "bar" =: Text] ()
 -- >>> :t queryWithParams dsl
 -- queryWithParams dsl
 --   :: MonadIO m =>

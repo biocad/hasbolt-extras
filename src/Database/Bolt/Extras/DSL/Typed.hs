@@ -1,3 +1,5 @@
+{-# LANGUAGE ExplicitNamespaces #-}
+
 {- | Type-safe DSL for Cypher
 
 This module extends selectors from 'Database.Bolt.Extras.DSL.DSL' with extra type-level
@@ -24,6 +26,7 @@ module Database.Bolt.Extras.DSL.Typed
   , prop
   , propMaybe
   , param
+  , type (=:)
   , (=:)
   , NodeSelector, RelSelector
   , nodeSelector, relSelector
@@ -63,6 +66,7 @@ import           Database.Bolt.Extras.DSL.Typed.Parameters
 >>> :set -XOverloadedLabels
 >>> :set -XOverloadedStrings
 >>> :set -XDataKinds
+>>> :set -XTypeOperators
 >>> :load Database.Bolt.Extras.Graph Database.Bolt.Extras.DSL.Typed Database.Bolt.Extras.DSL
 >>> import Database.Bolt.Extras.DSL.Typed
 >>> import Data.Text (Text, unpack)
@@ -267,7 +271,7 @@ Here is an example of a path constructed this way:
 There is an option to annotate queries ('Database.Bolt.Extras.DSL.CypherDSL') with parameters they accept,
 like this:
 
-> fooQ :: CypherDSLParams '[ '("foo", Int), '("bar", Text) ]
+> fooQ :: CypherDSLParams '["foo" =: Int, "bar" =: Text]
 > fooQ = CypherDSLParams $ do
 >     matchF [ PS $ p $ #n .& lbl @Foo .& param (#foo =: "foo") .& param (#bar =: "bar")
 >     returnF ["n"]

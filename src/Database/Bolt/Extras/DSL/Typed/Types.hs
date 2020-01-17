@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds              #-}
+{-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE PolyKinds              #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
@@ -146,6 +147,9 @@ param
   => (SymbolS field, Text)
   -> a types -> a types
 param = withParam
+
+-- | Smart constructor for type-level tuples, to avoid writing @'("foo", Int)@ with extra tick.
+type (=:) (a :: k) (b :: l) = '(a, b)
 
 -- | Smart constructor for a pair of field name and its value. To be used with @OverloadedLabels@:
 --
