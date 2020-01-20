@@ -56,9 +56,9 @@ module Database.Bolt.Extras.DSL.Typed
   ) where
 
 
-import           Database.Bolt.Extras.DSL.Typed.Instances ()
-import           Database.Bolt.Extras.DSL.Typed.Types
+import           Database.Bolt.Extras.DSL.Typed.Instances  ()
 import           Database.Bolt.Extras.DSL.Typed.Parameters
+import           Database.Bolt.Extras.DSL.Typed.Types
 
 {- $setup
 >>> :set -XDeriveGeneric

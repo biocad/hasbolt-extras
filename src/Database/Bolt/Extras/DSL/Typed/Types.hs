@@ -1,10 +1,10 @@
 {-# LANGUAGE DataKinds              #-}
-{-# LANGUAGE TypeOperators              #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE PolyKinds              #-}
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeInType             #-}
+{-# LANGUAGE TypeOperators          #-}
 
 module Database.Bolt.Extras.DSL.Typed.Types where
 
