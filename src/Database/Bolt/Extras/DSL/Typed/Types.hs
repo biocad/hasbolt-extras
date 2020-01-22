@@ -4,6 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables    #-}
 {-# LANGUAGE TypeFamilyDependencies #-}
 {-# LANGUAGE TypeInType             #-}
+{-# LANGUAGE TypeOperators          #-}
 
 module Database.Bolt.Extras.DSL.Typed.Types where
 
@@ -146,6 +147,9 @@ param
   => (SymbolS field, Text)
   -> a types -> a types
 param = withParam
+
+-- | Smart constructor for type-level tuples, to avoid writing @'("foo", Int)@ with extra tick.
+type (=:) (a :: k) (b :: l) = '(a, b)
 
 -- | Smart constructor for a pair of field name and its value. To be used with @OverloadedLabels@:
 --
