@@ -28,10 +28,11 @@ type family GetTypeFromRecord (field :: Symbol) (record :: k -> Type) :: Type wh
   GetTypeFromRecord field (D1 _ (C1 _ sels)) = GetTypeFromRecord field sels
   GetTypeFromRecord field (S1 ('MetaSel ('Just field) _ _ _) (Rec0 (Maybe typ))) = typ
   GetTypeFromRecord field (S1 ('MetaSel ('Just field) _ _ _) (Rec0 typ)) = typ
-  GetTypeFromRecord field (S1 ('MetaSel ('Just field) _ _ _) (Rec0 (Maybe typ) ) :*: _) = typ
-  GetTypeFromRecord field (S1 ('MetaSel ('Just field) _ _ _) (Rec0 typ ) :*: _) = typ
-  GetTypeFromRecord field (S1 ('MetaSel ('Just _) _ _ _) (Rec0 typ ) :*: r) =
-    GetTypeFromRecord field r
+  GetTypeFromRecord field (l :*: r)
+    = If
+        (RecordHasField field l)
+        (GetTypeFromRecord field l)
+        (GetTypeFromRecord field r)
 
 -- | This family extracts a type of the field with given name from the first type in the list
 -- that has it.

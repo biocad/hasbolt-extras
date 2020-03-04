@@ -22,6 +22,7 @@ module Database.Bolt.Extras.DSL.Typed
   -- $safety
 
     SelectorLike(..)
+  , LabelConstraint
   , lbl
   , prop
   , propMaybe
@@ -285,4 +286,17 @@ To make sure that all parameters are filled, use 'queryWithParams' function:
 > records <- queryWithParams fooQ (#foo =: 42) (#bar =: "Hello")
 
 See below for more examples.
+-}
+
+{- $tests
+
+These should not generate compile errors.
+
+>>> data TestRecord = TestRecord { first :: Text, second :: Int, third :: Bool, fourth :: Maybe String, fifth :: Text } deriving (Eq, Show, Generic)
+>>> defN .& lbl @TestRecord .& prop (#first =: "foo")
+... NodeSelector ...
+>>> defN .& lbl @TestRecord .& prop (#third =: True) .& prop (#fifth =: "lalala")
+... NodeSelector ...
+>>> defN .& lbl @TestRecord .& prop (#fourth =: "123") .& prop (#first =: "noes")
+... NodeSelector ...
 -}
