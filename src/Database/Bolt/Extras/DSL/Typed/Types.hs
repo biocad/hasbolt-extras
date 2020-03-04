@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds        #-}
 {-# LANGUAGE DataKinds              #-}
 {-# LANGUAGE FlexibleContexts       #-}
 {-# LANGUAGE PolyKinds              #-}
@@ -76,6 +77,9 @@ class SelectorLike (a :: k -> Type) where
     => (SymbolS field, Text)
     -> a types
     -> a types
+
+-- | Constraint for types that may be used with 'lbl'.
+type LabelConstraint (typ :: Type) = KnownSymbol (GetTypeName (Rep typ))
 
 -- | Synonym for 'withLabel' with label type variable as first one, enabling @lbl \@Foo@ type
 -- application syntax.

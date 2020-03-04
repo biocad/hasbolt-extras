@@ -22,6 +22,7 @@ module Database.Bolt.Extras.DSL.Typed
   -- $safety
 
     SelectorLike(..)
+  , LabelConstraint
   , lbl
   , prop
   , propMaybe
