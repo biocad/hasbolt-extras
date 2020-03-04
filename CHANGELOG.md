@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.1.3] - 2020-03-04
+### Fixed
+- https://www.wrike.com/open.htm?id=472936296: fix recursion in `GetTypeFromRecord` type family.
+### Added
+- Export of `LabelConstraint` to allow users to define wrappers around `lbl`.
+
 ## [0.0.1.2] - 2020-01-17
 ### Added
 - `=:` type synonym to avoid ticks in type-level tuples.
