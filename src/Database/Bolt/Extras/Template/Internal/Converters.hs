@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Database.Bolt.Extras.Template.Internal.Converters
@@ -22,6 +23,16 @@ import           Database.Bolt.Extras.Utils (currentLoc, dummyId)
 import           Instances.TH.Lift          ()
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
+
+-- Starting with template-haskell-2.16.0.0, 'TupE' constructor accepts @Maybe Exp@, to support
+-- TupleSections. We use this alias for compatibility with both old and new versions.
+tupE' :: [Exp] -> Exp
+#if MIN_VERSION_template_haskell(2, 16, 0)
+tupE' = TupE . map Just
+#else
+tupE' = TupE
+#endif
+
 
 -- | Describes a @bijective@ class, i.e. class that has two functions: @phi :: a -> SomeType@ and @phiInv :: SomeType -> a@.
 -- Requires class name, @SomeType@ name and names of the class functions (@phi@ and @phiInv@).
@@ -204,7 +215,7 @@ makeToClause label dataCons varName dataFields fieldLabelModifier
     -- `key` is field record name.
     -- `value` is the data that corresponding field holds.
     pairs :: [Exp]
-    pairs = zipWith (\fld val -> TupE [strToTextE $ fieldLabelModifier fld, val]) fieldNames valuesExp
+    pairs = zipWith (\fld val -> tupE' [strToTextE $ fieldLabelModifier fld, val]) fieldNames valuesExp
 
     -- Map representation:
     -- mapE = fromList pairs
@@ -260,7 +271,7 @@ makeFromClause label conName varName dataFields fieldLabelModifier = do
 
   -- maybeNamesE :: [Exp]
   -- Contains Exp representation of (Text, Bool) – field name and isMaybe check result on it.
-  let maybeNamesE = zipWith (\n m -> TupE [n, ConE $ if m then trueName else falseName]) fieldNamesE maybeFields
+  let maybeNamesE = zipWith (\n m -> tupE' [n, ConE $ if m then trueName else falseName]) fieldNamesE maybeFields
 
   -- varExp :: Q Exp
   -- Pattern match variable packed in Exp. It will be used in QuasiQuotation below.
