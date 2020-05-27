@@ -11,7 +11,6 @@ module Database.Bolt.Extras.DSL.Internal.Instances () where
 
 import           Control.Monad.Writer                    (execWriter, tell)
 import           Data.Function                           ((&))
-import           Data.Monoid                             ((<>))
 import           Data.Proxy                              (Proxy (..))
 import           Data.Text                               (intercalate, pack)
 import           Database.Bolt.Extras                    (ToCypher (..),

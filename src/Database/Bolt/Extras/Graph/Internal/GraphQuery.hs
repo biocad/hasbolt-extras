@@ -24,7 +24,6 @@ import           Data.Map.Strict                                   (fromList,
                                                                     mapWithKey,
                                                                     toList,
                                                                     union, (!))
-import           Data.Monoid                                       ((<>))
 import           Data.Text                                         as T (Text, intercalate,
                                                                          null,
                                                                          pack)

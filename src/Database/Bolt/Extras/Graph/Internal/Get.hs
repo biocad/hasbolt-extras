@@ -65,7 +65,6 @@ import           Data.Map.Strict                                   as M (Map,
 import           Data.Maybe                                        (catMaybes,
                                                                     fromJust,
                                                                     isJust)
-import           Data.Monoid                                       ((<>))
 import           Data.Text                                         (Text, cons,
                                                                     intercalate,
                                                                     pack,

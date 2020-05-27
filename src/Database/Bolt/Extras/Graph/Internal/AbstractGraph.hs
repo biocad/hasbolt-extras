@@ -16,7 +16,6 @@ module Database.Bolt.Extras.Graph.Internal.AbstractGraph
 
 import           Control.Lens    (makeLenses, over)
 import           Data.Map.Strict (Map, insert, notMember)
-import           Data.Monoid     ((<>))
 import           Data.Text       (Text)
 import           GHC.Generics    (Generic)
 import           Text.Printf     (printf)

@@ -9,7 +9,6 @@ import           Control.Monad.Free                          (Free (..),
                                                               foldFree)
 import           Control.Monad.Writer                        (Writer,
                                                               execWriter, tell)
-import           Data.Monoid                                 ((<>))
 import           Data.Text                                   as T (Text,
                                                                    intercalate,
                                                                    unwords)
