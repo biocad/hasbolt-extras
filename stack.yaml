@@ -1,14 +1,9 @@
-resolver: lts-13.6
+resolver: lts-15.5
 
 packages:
 - '.'
 
 extra-deps:
-  - hasbolt-0.1.4.0
-
-# https://github.com/commercialhaskell/stack/issues/3520
-ignore-revision-mismatch: true
+  - hasbolt-0.1.4.3
 
 flags: {}
-
-extra-package-dbs: []
