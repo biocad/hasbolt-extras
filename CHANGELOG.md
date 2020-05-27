@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.1.4] - 2020-05-27
+### Fixed
+- Compatibility with GHC-8.10.
+
 ## [0.0.1.3] - 2020-03-04
 ### Fixed
 - https://www.wrike.com/open.htm?id=472936296: fix recursion in `GetTypeFromRecord` type family.
