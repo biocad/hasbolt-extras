@@ -1,0 +1,29 @@
+sudo: false
+language: generic
+
+env:
+  global:
+      # HACKAGE_PASSWORD
+    - secure: p4viJPiZUbANBNWynxsHERHnofPaZgrhmZEMZrsocWNV0snrRpYOoFogL1G2WQ7LJH2eMAfWUuwL0kCqoPOu4fiXXliG6h/zL8uKGgikOZ96C4oCptuOG/Ew117Hj1Ao9cp+9hieu4IADjORe7/BtCcpqDTV2kG7No0+O6bano1Ws+X6IVfrMHHB0DfUNqz9nfg6u3+6wAnPqh3AWOTULIdcV+eq2HD3+iBpR+laPiTATQayDMjC8FYWMVr8NsS07Z0I/jYBN1/lhvRH27beH02CzXpqaEcNn8yfuX6bKEPdjOtdPbl01YHBCnBtZpiluDuwj7a7ITDLqhsQ6pA5iduKQthOX75mooyhwQCEhH0KqlwysOT37k9Q4b/DMQAG6cuwyhZrAtXSprDQVDGgOr72RSUDwkiYmORpTno1VWGFg1ToOVPIN2Rel2HEyb/M/SVozV8lmSZ5D+CvomRg7H6SqCxBi8jP1MsRRBeZ1bBXolfVL7+OR2T4d8zmluDJwOrtQ4zfI/mbnvBg91N4fDY4ibdF/fCDav3/I5timmfyqRCGOVzWlhIovbKwo0OYj3xd9q7SP/EL4Xg8IcZedQF8/viCsltWcceLPBKL63eI9XUbk5enB1WDsDMIae7IUAuUjJ9JmX1XzNiSwG+omD+OCLZbh4UUAS3SngZK4KQ=
+
+# Caching so the next build will be fast too.
+cache:
+  directories:
+  - $HOME/.stack
+
+before_install:
+  - curl -sSL https://get.haskellstack.org/ | sh
+  - stack --version
+
+install:
+  - stack build --test --bench --only-dependencies
+
+jobs:
+  include:
+    - stage: Build and test
+      script: stack build --pedantic --test --bench --no-run-benchmarks
+    - stage: Hackage deploy
+      # n is for "store credentials" question
+      # --pvp-bounds is broken in stack-2.3.1
+      script: echo -e "ozzzzz\n${HACKAGE_PASSWORD}\nn" | stack upload .
+      if: tag IS present
