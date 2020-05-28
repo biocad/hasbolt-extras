@@ -103,7 +103,7 @@ lbl = withLabel
 -- >>> toCypherN $ defN .& lbl @Foo .& prop (#bar =: "hello")
 -- (:Foo{bar:"hello"})
 prop
-  :: forall (field :: Symbol) (a :: k -> Type) (types :: k) (typ :: Type)
+  :: forall (field :: Symbol) k (a :: k -> Type) (types :: k) (typ :: Type)
   .  SelectorLike a
   => HasField types field typ
   => B.IsValue typ
@@ -121,7 +121,7 @@ prop = withProp
 -- >>> toCypherN $ defN .& lbl @Foo .& propMaybe (#bar =: Nothing)
 -- (:Foo)
 propMaybe
-  :: forall (field :: Symbol) (a :: k -> Type) (types :: k) (typ :: Type)
+  :: forall (field :: Symbol) k (a :: k -> Type) (types :: k) (typ :: Type)
   .  SelectorLike a
   => HasField types field typ
   => B.IsValue typ
@@ -145,7 +145,7 @@ propMaybe _                = id
 --
 -- __NOTE__: this will add @$@ symbol to parameter name automatically.
 param
-  :: forall (field :: Symbol) (a :: k -> Type) (types :: k)
+  :: forall (field :: Symbol) k (a :: k -> Type) (types :: k)
   .  SelectorLike a
   => HasField' types field
   => (SymbolS field, Text)

@@ -15,7 +15,6 @@ module Database.Bolt.Extras.Internal.Cypher
 -- This file contains some converation rules from 'Database.Bolt' types to `Cypher`.
 -------------------------------------------------------------------------------------------------
 
-import           Data.Monoid                         ((<>))
 import           Data.Text                           as T (Text, concat, cons,
                                                            intercalate, pack,
                                                            replace, toUpper)

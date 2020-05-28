@@ -15,7 +15,6 @@ module Database.Bolt.Extras.Graph.Internal.Put
 
 import           Data.List                                         (foldl')
 import           Data.Map.Strict                                   (toList, (!))
-import           Data.Monoid                                       ((<>))
 import           Data.Text                                         (Text,
                                                                     intercalate,
                                                                     pack)
