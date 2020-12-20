@@ -161,7 +161,7 @@ makeBiClassInstance BiClassInfo {..} typeCon fieldLabelModifier = do
   fresh <- newName "x"
 
   -- constructs `bijective` class functions (phi and phiInv – toClause and fromClause correspondingly here).
-  toClause   <- makeToClause label dataName fresh dataFields fieldLabelModifier
+  toClause   <- makeToClause label dataName consName dataFields fieldLabelModifier
   fromClause <- makeFromClause label consName fresh dataFields fieldLabelModifier
 
   -- function declarations themselves.
@@ -192,20 +192,22 @@ getTypeCons otherDecl = error $ $currentLoc ++ "unsupported declaration: " ++ sh
 -- | Describes the body of conversion to target type function.
 --
 makeToClause :: String -> Name -> Name -> [Name] -> (String -> String) -> Q Clause
-makeToClause label dataCons varName dataFields fieldLabelModifier
-  | null dataFields = pure $ Clause [WildP] (NormalB result) []
-  | otherwise       = pure $ Clause [VarP varName] (NormalB result) []
+makeToClause label dataCons consName dataFields fieldLabelModifier
+  | null dataFields = pure $ Clause [WildP] (NormalB $ result []) []
+  | otherwise       = do
+    fieldVars <- sequenceQ $ newName "_field" <$ dataFields -- var for each field
+    pure $ Clause [recPat fieldVars] (NormalB $ result fieldVars) []
   where
-    -- apply field record to a data.
-    getValue :: Name -> Exp
-    getValue name = AppE (VarE name) (VarE varName)
+    -- construct record pattern
+    recPat :: [Name] -> Pat
+    recPat fieldVars = ParensP $ RecP consName $ zip dataFields $ VarP <$> fieldVars
 
     -- List of values which a data holds.
     -- The same in terms of Haskell :: valuesExp = fmap (\field -> toValue (field x))
     -- `x` is a bounded in pattern match variable (e.g. toNode x = ...). If toNode :: a -> Node, then x :: a, i.e. x is data which we want to convert into Node.
     -- `field` is a field record function.
-    valuesExp :: [Exp]
-    valuesExp = fmap (AppE (VarE 'toValue) . getValue) dataFields
+    valuesExp :: [Name] -> [Exp]
+    valuesExp = fmap (AppE (VarE 'toValue) . VarE)
 
     -- Retrieve all field record names from the convertible type.
     fieldNames :: [String]
@@ -214,14 +216,14 @@ makeToClause label dataCons varName dataFields fieldLabelModifier
     -- List of pairs :: [(key, value)]
     -- `key` is field record name.
     -- `value` is the data that corresponding field holds.
-    pairs :: [Exp]
-    pairs = zipWith (\fld val -> tupE' [strToTextE $ fieldLabelModifier fld, val]) fieldNames valuesExp
+    pairs :: [Name] -> [Exp]
+    pairs = zipWith (\fld val -> tupE' [strToTextE $ fieldLabelModifier fld, val]) fieldNames . valuesExp
 
     -- Map representation:
     -- mapE = fromList pairs
     -- in terms of Haskell.
-    mapE :: Exp
-    mapE = AppE (VarE 'fromList) (ListE pairs)
+    mapE :: [Name] -> Exp
+    mapE vars = AppE (VarE 'fromList) (ListE $ pairs vars)
 
     -- A bit of crutches.
     -- The difference between Node and URelationship is in the number of labels they hold.
@@ -235,8 +237,8 @@ makeToClause label dataCons varName dataFields fieldLabelModifier
     -- In terms of Haskell:
     -- dataCons (fromIntegral dummyId) (fieldFun label) mapE
     -- Constructs data with three fields.
-    result :: Exp
-    result = AppE (AppE (AppE (ConE dataCons) (LitE . IntegerL . fromIntegral $ dummyId)) (fieldFun $ strToTextE label)) mapE
+    result :: [Name] -> Exp
+    result = AppE (AppE (AppE (ConE dataCons) (LitE . IntegerL . fromIntegral $ dummyId)) (fieldFun $ strToTextE label)) . mapE
 
 
 -- | Describes the body of conversion from target type function.
