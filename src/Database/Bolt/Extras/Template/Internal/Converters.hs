@@ -1,5 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP             #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Database.Bolt.Extras.Template.Internal.Converters
@@ -10,8 +10,8 @@ module Database.Bolt.Extras.Template.Internal.Converters
   , makeURelationLikeWith
   ) where
 
-import           Control.Lens               (view, _1)
-import           Control.Monad              ((>=>))
+--import           Control.Lens               (view, _1)
+--import           Control.Monad              ((>=>))
 import           Data.Map.Strict            (fromList, member, notMember, (!))
 import           Data.Text                  (Text, pack, unpack)
 import           Database.Bolt (Node (..), URelationship (..), Value (..))
@@ -152,7 +152,7 @@ makeBiClassInstance BiClassInfo {..} typeCon fieldLabelModifier = do
   let label = nameBase tyName
 
   -- collects the names of all fields in the type.
-  let dataFields = concatMap (snd . getConsFields) constr
+  let (dataFields, fieldTypes) = unzip $ concatMap (snd . getConsFields) constr
 
   -- gets data constructor name
   let (consName, _) = head $ fmap getConsFields constr
@@ -162,7 +162,7 @@ makeBiClassInstance BiClassInfo {..} typeCon fieldLabelModifier = do
 
   -- constructs `bijective` class functions (phi and phiInv – toClause and fromClause correspondingly here).
   toClause   <- makeToClause label dataName consName dataFields fieldLabelModifier
-  fromClause <- makeFromClause label consName fresh dataFields fieldLabelModifier
+  fromClause <- makeFromClause label consName fresh dataFields fieldTypes fieldLabelModifier
 
   -- function declarations themselves.
   let bodyDecl = [FunD classToFun [toClause], FunD classFromFun [fromClause]]
@@ -170,14 +170,12 @@ makeBiClassInstance BiClassInfo {..} typeCon fieldLabelModifier = do
   -- Instance declaration itself.
   pure [InstanceD Nothing [] (AppT (ConT className) (ConT typeCon)) bodyDecl]
 
-
-
 -- | Extract information about type: constructor name and field record names.
 --
-getConsFields :: Con -> (Name, [Name])
-getConsFields (RecC cName decs)           = (cName, fmap (view _1) decs)
+getConsFields :: Con -> (Name, [(Name,Type)])
+getConsFields (RecC cName decs)           = (cName, fmap (\(fname, _, ftype) -> (fname, ftype)) decs)
 getConsFields (ForallC _ _ cons)          = getConsFields cons
-getConsFields (RecGadtC (cName:_) decs _) = (cName, fmap (view _1) decs)
+getConsFields (RecGadtC (cName:_) decs _) = (cName, fmap (\(fname, _, ftype) -> (fname, ftype)) decs)
 getConsFields (NormalC cName _)           = (cName, [])
 getConsFields _                           = error $ $currentLoc ++ "unsupported data declaration."
 
@@ -243,13 +241,13 @@ makeToClause label dataCons consName dataFields fieldLabelModifier
 
 -- | Describes the body of conversion from target type function.
 --
-makeFromClause :: String -> Name -> Name -> [Name] -> (String -> String) -> Q Clause
-makeFromClause label conName varName dataFields fieldLabelModifier = do
+makeFromClause :: String -> Name -> Name -> [Name] -> [Type] -> (String -> String) -> Q Clause
+makeFromClause label conName varName dataFields fieldTypes fieldLabelModifier = do
 
   -- Obtain all data field types.
   -- 'reify' returns 'Q Info', and we are interested in its 'VarI' constructur which provides information about variable: name and type.
   -- To obtain field type, one should get the second field record of VarI.
-  fieldTypes <- mapM (reify >=> extractVarType) dataFields
+  --fieldTypes <- mapM (reify >=> extractVarType) dataFields
 
   -- Contains 'True' in each position where 'Maybe a' type occured and 'False' everywhere else.
   let maybeFields = fmap isMaybe fieldTypes
@@ -292,16 +290,17 @@ makeFromClause label conName varName dataFields fieldLabelModifier = do
   -- fromNode :: Node -> a
   -- fromNode varName | checkLabels varName [dataLabel] && checkProps varName fieldNames = ConName { foo = bar, baz = quux ...}
   --                  | otherwise = unpackError varName (unpack dataLabel)
-  let successExp = RecConE conName (zipWith (\f fldName -> (fldName, AppE (AppE (VarE 'getProp) (VarE varName)) f)) maybeNamesE dataFields)
+  -- let successExp = RecConE conName (zipWith (\f fldName -> (fldName, AppE (AppE (VarE 'getProp) (VarE varName)) f)) maybeNamesE dataFields)
+  let successExp = foldl (\a f -> AppE a $ AppE (AppE (VarE 'getProp) (VarE varName)) f) (ConE conName) maybeNamesE
   let successCase = (guardSuccess, successExp)
   let failCase = (guardFail, failExp)
 
   pure $ Clause [VarP varName] (GuardedB [successCase, failCase]) []
 
 
-extractVarType :: Info -> Q Type
-extractVarType (VarI _ fieldType _) = pure fieldType
-extractVarType _                    = error ($currentLoc ++ "this can not happen.")
+-- extractVarType :: Info -> Q Type
+-- extractVarType (VarI _ fieldType _) = pure fieldType
+-- extractVarType _                    = error ($currentLoc ++ "this can not happen.")
 
 -- | Check whether given type is '_ -> Maybe _'
 -- It pattern matches arrow type applied to any argument ant 'T _' and checks if T is ''Maybe
