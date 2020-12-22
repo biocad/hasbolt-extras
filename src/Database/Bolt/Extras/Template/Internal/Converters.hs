@@ -10,8 +10,6 @@ module Database.Bolt.Extras.Template.Internal.Converters
   , makeURelationLikeWith
   ) where
 
---import           Control.Lens               (view, _1)
---import           Control.Monad              ((>=>))
 import           Data.Map.Strict            (fromList, member, notMember, (!))
 import           Data.Text                  (Text, pack, unpack)
 import           Database.Bolt (Node (..), URelationship (..), Value (..))
@@ -151,13 +149,13 @@ makeBiClassInstance BiClassInfo {..} typeCon fieldLabelModifier = do
   -- nameBase gives object name without package prefix. `label` is the type name here.
   let label = nameBase tyName
 
-  -- collects the names of all fields in the type.
+  -- collects names and types of all fields in the type.
   let (dataFields, fieldTypes) = unzip $ concatMap (snd . getConsFields) constr
 
   -- gets data constructor name
   let (consName, _) = head $ fmap getConsFields constr
 
-  -- Just a fresh variable. It will be used in labmda abstractions in makeToClause and makeFromClause functions.
+  -- Just a fresh variable. It will be used in labmda abstractions in makeFromClause function.
   fresh <- newName "x"
 
   -- constructs `bijective` class functions (phi and phiInv – toClause and fromClause correspondingly here).
@@ -170,9 +168,9 @@ makeBiClassInstance BiClassInfo {..} typeCon fieldLabelModifier = do
   -- Instance declaration itself.
   pure [InstanceD Nothing [] (AppT (ConT className) (ConT typeCon)) bodyDecl]
 
--- | Extract information about type: constructor name and field record names.
+-- | Extract information about type: constructor name and field record names with corresponding types.
 --
-getConsFields :: Con -> (Name, [(Name,Type)])
+getConsFields :: Con -> (Name, [(Name, Type)])
 getConsFields (RecC cName decs)           = (cName, fmap (\(fname, _, ftype) -> (fname, ftype)) decs)
 getConsFields (ForallC _ _ cons)          = getConsFields cons
 getConsFields (RecGadtC (cName:_) decs _) = (cName, fmap (\(fname, _, ftype) -> (fname, ftype)) decs)
@@ -196,14 +194,12 @@ makeToClause label dataCons consName dataFields fieldLabelModifier
     fieldVars <- sequenceQ $ newName "_field" <$ dataFields -- var for each field
     pure $ Clause [recPat fieldVars] (NormalB $ result fieldVars) []
   where
-    -- construct record pattern
+    -- construct record pattern: (Rec {f1 = v1, ... })
     recPat :: [Name] -> Pat
     recPat fieldVars = ParensP $ RecP consName $ zip dataFields $ VarP <$> fieldVars
 
     -- List of values which a data holds.
-    -- The same in terms of Haskell :: valuesExp = fmap (\field -> toValue (field x))
-    -- `x` is a bounded in pattern match variable (e.g. toNode x = ...). If toNode :: a -> Node, then x :: a, i.e. x is data which we want to convert into Node.
-    -- `field` is a field record function.
+    -- The same in terms of Haskell :: valuesExp = fmap (\field -> toValue fieldVar)
     valuesExp :: [Name] -> [Exp]
     valuesExp = fmap (AppE (VarE 'toValue) . VarE)
 
@@ -243,12 +239,6 @@ makeToClause label dataCons consName dataFields fieldLabelModifier
 --
 makeFromClause :: String -> Name -> Name -> [Name] -> [Type] -> (String -> String) -> Q Clause
 makeFromClause label conName varName dataFields fieldTypes fieldLabelModifier = do
-
-  -- Obtain all data field types.
-  -- 'reify' returns 'Q Info', and we are interested in its 'VarI' constructur which provides information about variable: name and type.
-  -- To obtain field type, one should get the second field record of VarI.
-  --fieldTypes <- mapM (reify >=> extractVarType) dataFields
-
   -- Contains 'True' in each position where 'Maybe a' type occured and 'False' everywhere else.
   let maybeFields = fmap isMaybe fieldTypes
 
@@ -288,19 +278,14 @@ makeFromClause label conName varName dataFields fieldTypes fieldLabelModifier = 
 
   -- Kind of this function realization in terms of Haskell:
   -- fromNode :: Node -> a
-  -- fromNode varName | checkLabels varName [dataLabel] && checkProps varName fieldNames = ConName { foo = bar, baz = quux ...}
+  -- fromNode varName | checkLabels varName [dataLabel] && checkProps varName fieldNames = ConName (getProp varName "fieldName1") (getProp varName "fieldName2") ...
   --                  | otherwise = unpackError varName (unpack dataLabel)
-  -- let successExp = RecConE conName (zipWith (\f fldName -> (fldName, AppE (AppE (VarE 'getProp) (VarE varName)) f)) maybeNamesE dataFields)
   let successExp = foldl (\a f -> AppE a $ AppE (AppE (VarE 'getProp) (VarE varName)) f) (ConE conName) maybeNamesE
   let successCase = (guardSuccess, successExp)
   let failCase = (guardFail, failExp)
 
   pure $ Clause [VarP varName] (GuardedB [successCase, failCase]) []
 
-
--- extractVarType :: Info -> Q Type
--- extractVarType (VarI _ fieldType _) = pure fieldType
--- extractVarType _                    = error ($currentLoc ++ "this can not happen.")
 
 -- | Check whether given type is '_ -> Maybe _'
 -- It pattern matches arrow type applied to any argument ant 'T _' and checks if T is ''Maybe
