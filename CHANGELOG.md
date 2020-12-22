@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.1.5] - 2020-12-22
+### Fixed
+- Compatibility of `makeNodeLike` / `makeURelationLike` with `DuplicateRecordFields`, thanks to
+  [@oddsome](https://github.com/oddsome), [PR #40](https://github.com/biocad/hasbolt-extras/pull/40).
+
 ## [0.0.1.4] - 2020-05-27
 ### Fixed
 - Compatibility with GHC-8.10.
