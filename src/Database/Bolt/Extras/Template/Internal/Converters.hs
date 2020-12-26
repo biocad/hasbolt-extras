@@ -287,11 +287,11 @@ makeFromClause label conName varName dataFields fieldTypes fieldLabelModifier = 
   pure $ Clause [VarP varName] (GuardedB [successCase, failCase]) []
 
 
--- | Check whether given type is '_ -> Maybe _'
--- It pattern matches arrow type applied to any argument ant 'T _' and checks if T is ''Maybe
+-- | Check whether given type is 'Maybe _'
+-- It pattern matches type T applied to any argument and checks if T is ''Maybe
 isMaybe :: Type -> Bool
-isMaybe (AppT (AppT ArrowT _) (AppT (ConT t) _)) = t == ''Maybe
-isMaybe _                                        = False
+isMaybe (AppT (ConT t) _) = t == ''Maybe
+isMaybe _                 = False
 
 strToTextE :: String -> Exp
 strToTextE str = AppE (VarE 'pack) (LitE . StringL $ str)
