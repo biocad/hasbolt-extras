@@ -65,26 +65,40 @@ uRelationLikeClass = BiClassInfo { className    = ''URelationLike
 -- | Make an instance of 'NodeLike' class.
 -- Only data types with one constructor are currently supported.
 -- Each field is transformed into 'Text' key and its value is transformed into a 'Value'.
--- For example, we have a structure
+-- For example, we have a structure and define an instance:
 --
--- > data Foo = Bar { baz  :: Double
--- >                , quux :: Text
--- >                , quuz :: Int
--- >                }
+-- >>> :{
+-- data Foo = Bar
+--   { baz  :: Double
+--   , quux :: Text
+--   , quuz :: Maybe Int
+--   } deriving (Show)
+-- makeNodeLike ''Foo
+-- :}
 --
--- You can make it instance of 'NodeLike' by writing
+-- Then you may create example and convert it to and from Node:
 --
--- > makeNodeLike ''Foo
+-- >>> let foo = Bar 42.0 "Loren ipsum" (Just 7)
+-- >>> toNode foo
+-- Node {nodeIdentity = -1, labels = ["Foo"], nodeProps = fromList [("baz",F 42.0),("quux",T "Loren ipsum"),("quuz",I 7)]}
+-- >>> fromNode . toNode $ foo :: Foo
+-- Bar {baz = 42.0, quux = "Loren ipsum", quuz = Just 7}
 --
--- Then you may create example and convert it into from from Node:
+-- 'Maybe' fields are handled correctly:
 --
--- > ghci> :set -XOverloadedStrings
--- > ghci> let foo = Bar 42.0 "Loren ipsum" 7
--- > ghci> toNode foo
--- > Node {nodeIdentity = -1, labels = ["Foo"], nodeProps = fromList [("baz",F 42.0),("quux",T "Loren ipsum"),("quuz",I 7)]}
--- > ghci> fromNode . toNode $ foo :: Foo
--- > Bar {baz = 42.0, quux = "Loren ipsum", quuz = 7}
+-- >>> let bar = Bar 42.0 "Hello world" Nothing
+-- >>> toNode bar
+-- Node {nodeIdentity = -1, labels = ["Foo"], nodeProps = fromList [("baz",F 42.0),("quux",T "Hello world"),("quuz",N ())]}
+-- >>> :{
+-- let barNode = Node
+--       { nodeIdentity = -1
+--       , labels = ["Foo"]
+--       , nodeProps = fromList [("baz", F 42.0), ("quux", T "Hello world")] -- No "quuz" here
+--       }
+-- :}
 --
+-- >>> fromNode barNode :: Foo
+-- Bar {baz = 42.0, quux = "Hello world", quuz = Nothing}
 makeNodeLike :: Name -> Q [Dec]
 makeNodeLike name = makeBiClassInstance nodeLikeClass name id
 
@@ -308,3 +322,9 @@ getProp container (fieldName, fieldMaybe) | fieldMaybe && fieldName `notMember` 
 
 unpackError :: Show c => c -> String -> a
 unpackError container label = error $ $currentLoc ++ " could not unpack " ++ label ++ " from " ++ show container
+
+{- $setup
+>>> :set -XTemplateHaskell
+>>> :set -XOverloadedStrings
+>>> import Data.Text (Text)
+-}
