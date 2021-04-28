@@ -15,10 +15,9 @@ import           Control.Monad.IO.Class                     (MonadIO)
 import           Data.Kind                                  (Type)
 import qualified Data.Map.Strict                            as Map
 import           Data.Text                                  (Text, pack)
-import           Database.Bolt                              (BoltActionT,
-                                                             IsValue (..),
-                                                             Record, Value,
-                                                             queryP)
+import           Database.Bolt                              (BoltActionT, IsValue (..), Record,
+                                                             Value, queryP)
+import           GHC.Stack                                  (HasCallStack, withFrozenCallStack)
 import           GHC.TypeLits                               (Symbol)
 
 import           Database.Bolt.Extras.DSL.Internal.Executer (formQuery)
@@ -53,7 +52,7 @@ newtype CypherDSLParams (params :: [(Symbol, Type)]) (a :: Type)
 -- This should be considered an implementation detail.
 class QueryWithParams (params :: [(Symbol, Type)]) (m :: Type -> Type) fun | params m -> fun where
   -- | Internal function that accumulates parameters from type-level list.
-  collectParams :: CypherDSL () -> [(Text, Value)] -> fun
+  collectParams :: HasCallStack => CypherDSL () -> [(Text, Value)] -> fun
 
 -- | Base case: if there are no parameters, perform query with 'queryP'.
 instance MonadIO m => QueryWithParams '[] m (BoltActionT m [Record]) where
@@ -95,6 +94,7 @@ queryWithParams
   :: forall params m fun
   .  MonadIO m
   => QueryWithParams params m fun
+  => HasCallStack
   => CypherDSLParams params ()
   -> fun
 queryWithParams (CypherDSLParams dsl) = collectParams @params @m dsl []

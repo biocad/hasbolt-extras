@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.1.7] - 2021-04-28
+### Changed
+- Add more `HasCallStack`.
+
 ## [0.0.1.6] - 2020-12-26
 ### Fixed
 - Fix `makeNodeLike` for `Maybe` fields, bug introduced in previous version.
