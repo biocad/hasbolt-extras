@@ -17,7 +17,7 @@ import qualified Data.Map.Strict                            as Map
 import           Data.Text                                  (Text, pack)
 import           Database.Bolt                              (BoltActionT, IsValue (..), Record,
                                                              Value, queryP)
-import           GHC.Stack                                  (HasCallStack, withFrozenCallStack)
+import           GHC.Stack                                  (HasCallStack)
 import           GHC.TypeLits                               (Symbol)
 
 import           Database.Bolt.Extras.DSL.Internal.Executer (formQuery)

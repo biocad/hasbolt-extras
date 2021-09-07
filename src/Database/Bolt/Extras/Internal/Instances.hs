@@ -6,19 +6,16 @@
 module Database.Bolt.Extras.Internal.Instances () where
 
 import           Control.Applicative                 ((<|>))
-import           Data.Aeson                          (FromJSON (..),
-                                                      ToJSON (..))
+import           Data.Aeson                          (FromJSON (..), ToJSON (..))
 import           Data.Aeson.Types                    (Parser)
+import           Data.List.NonEmpty                  (NonEmpty (..), toList)
 import           Data.Map.Strict                     (Map)
 import           Data.Text                           (Text)
 import           Database.Bolt                       (Node, Value (..))
 import qualified Database.Bolt                       as DB (Structure)
-import           Database.Bolt.Extras.Internal.Types (FromValue (..),
-                                                      NodeLike (..),
-                                                      ToValue (..))
+import           Database.Bolt.Extras.Internal.Types (FromValue (..), NodeLike (..), ToValue (..))
 import           Database.Bolt.Extras.Utils          (currentLoc)
-import           GHC.Float                           (double2Float,
-                                                      float2Double)
+import           GHC.Float                           (double2Float, float2Double)
 
 
 instance ToValue () where
@@ -44,6 +41,9 @@ instance ToValue Value where
 
 instance ToValue a => ToValue [a] where
   toValue = L . fmap toValue
+
+instance ToValue a => ToValue (NonEmpty a) where
+  toValue = toValue . toList
 
 instance ToValue a => ToValue (Maybe a) where
   toValue (Just a) = toValue a
@@ -85,6 +85,12 @@ instance FromValue Value where
 instance FromValue a => FromValue [a] where
   fromValue (L listV) = fmap fromValue listV
   fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into [Value]"
+
+instance FromValue a => FromValue (NonEmpty a) where
+  fromValue v =
+    case fromValue v of
+      []     -> error $ $currentLoc ++ "could not unpack empty list into NonEmpty Value"
+      (x:xs) -> x :| xs
 
 instance FromValue a => FromValue (Maybe a) where
   fromValue (N ()) = Nothing
