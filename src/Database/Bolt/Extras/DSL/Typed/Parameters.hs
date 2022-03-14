@@ -91,8 +91,7 @@ instance (IsValue typ, QueryWithParams rest m fun)
 -- ...
 queryWithParams
   :: forall params m fun
-  .  HasCallStack
-  => MonadIO m
+  . MonadIO m
   => QueryWithParams params m fun
   => HasCallStack
   => CypherDSLParams params ()

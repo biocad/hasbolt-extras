@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.1.9] - 2022-03-14
+### Added
+- `IsValue` instances for `ToValue` & `NodeLike` via newtypes;
+- Add even more `HasCallStack`.
+
 ## [0.0.1.8] - 2021-09-07
 ### Added
 - `FromValue` / `ToValue` instances for `NonEmpty`;
