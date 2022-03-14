@@ -8,7 +8,8 @@ module Database.Bolt.Extras.Internal.Types
   , Property
   , ToValue (..)
   , URelationLike (..)
-  , ValueWrapper (..)
+  , ToIsValue (..)
+  , NodeLikeProps (..)
   ) where
 
 import           GHC.Stack       (HasCallStack)
@@ -68,4 +69,8 @@ instance Properties Node where
 instance Properties URelationship where
   getProps = urelProps
 
-newtype ValueWrapper a = ValueWrapper a
+-- | ToIsValue provides IsValue instance given ToValue
+newtype ToIsValue a = ToIsValue a
+
+-- | NodeLikeProps provides IsValue instance given NodeLike, in form of Map Text Value
+newtype NodeLikeProps a = NodeLikeProps a

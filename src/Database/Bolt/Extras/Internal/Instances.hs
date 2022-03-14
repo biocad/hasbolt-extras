@@ -11,10 +11,11 @@ import           Data.Aeson.Types                    (Parser)
 import           Data.List.NonEmpty                  (NonEmpty (..), toList)
 import           Data.Map.Strict                     (Map)
 import           Data.Text                           (Text)
-import           Database.Bolt                       (Node, Value (..))
+import           Database.Bolt                       (Node (..), Value (..))
 import qualified Database.Bolt                       as DB
-import           Database.Bolt.Extras.Internal.Types (FromValue (..), NodeLike (..), ToValue (..),
-                                                      ValueWrapper (..))
+import           Database.Bolt.Extras.Internal.Types (FromValue (..), NodeLike (..),
+                                                      NodeLikeProps (..), ToIsValue (..),
+                                                      ToValue (..))
 import           Database.Bolt.Extras.Utils          (currentLoc)
 import           GHC.Float                           (double2Float, float2Double)
 
@@ -56,8 +57,11 @@ instance ToValue (Map Text Value) where
 instance ToValue DB.Structure where
   toValue = S
 
-instance ToValue a => DB.IsValue (ValueWrapper a) where
-  toValue (ValueWrapper a) = toValue a
+instance ToValue a => DB.IsValue (ToIsValue a) where
+  toValue (ToIsValue a) = toValue a
+
+instance NodeLike a => DB.IsValue (NodeLikeProps a) where
+  toValue (NodeLikeProps a) = toValue $ nodeProps $ toNode a
 
 instance FromValue () where
   fromValue (N ()) = ()
