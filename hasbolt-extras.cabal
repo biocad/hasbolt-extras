@@ -17,6 +17,13 @@ cabal-version:  >= 1.10
 extra-source-files: CHANGELOG.md
                     README.md
 
+tested-with:
+  GHC ==8.6.5
+   || ==8.8.4
+   || ==8.10.7
+   || ==9.0.2
+   || ==9.2.2
+
 source-repository head
   type: git
   location: https://github.com/biocad/hasbolt-extras
