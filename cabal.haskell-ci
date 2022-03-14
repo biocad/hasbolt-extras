@@ -1,0 +1,7 @@
+distribution: focal
+
+branches: master
+
+allow-failures: >=9.2
+
+cabal-check: False
