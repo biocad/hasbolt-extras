@@ -190,24 +190,19 @@ formQueryG $ emptyGraph
       & withReturn allProps
    )
 :}
-MATCH (user)-[user0binder :USER_CREATED {}]->(binder)
-, (binder :Binder {uuid:"123-456"})
-, (user :User {user:"098-765"})
+MATCH (user)-[user0binder :USER_CREATED {}]->(binder), (binder :Binder {uuid:"123-456"}), (user :User {user:"098-765"})
 <BLANKLINE>
 WITH DISTINCT binder, user, user0binder
 RETURN { id: id(binder),
   labels: labels(binder),
   props: properties(binder)
-} as binder
-, { id: id(user),
+} as binder, { id: id(user),
   labels: labels(user),
   props: properties(user)
-} as user
-, { id: id(user0binder),
+} as user, { id: id(user0binder),
   label: type(user0binder),
   props: properties(user0binder)
 } as user0binder
-<BLANKLINE>
 -}
 
 {- $safety
