@@ -11,14 +11,13 @@
 module Database.Bolt.Extras.DSL.Typed.Parameters
   where
 
-import           Control.Monad.IO.Class                     (MonadIO)
-import           Data.Kind                                  (Type)
-import qualified Data.Map.Strict                            as Map
-import           Data.Text                                  (Text, pack)
-import           Database.Bolt                              (BoltActionT, IsValue (..), Record,
-                                                             Value, queryP)
-import           GHC.Stack                                  (HasCallStack)
-import           GHC.TypeLits                               (Symbol)
+import           Control.Monad.IO.Class (MonadIO)
+import           Data.Kind              (Type)
+import qualified Data.Map.Strict        as Map
+import           Data.Text              (Text, pack)
+import           Database.Bolt          (BoltActionT, IsValue (..), Record, Value, queryP)
+import           GHC.Stack              (HasCallStack)
+import           GHC.TypeLits           (Symbol)
 
 import           Database.Bolt.Extras.DSL.Internal.Executer (formQuery)
 import           Database.Bolt.Extras.DSL.Internal.Language (CypherDSL)
@@ -92,7 +91,8 @@ instance (IsValue typ, QueryWithParams rest m fun)
 -- ...
 queryWithParams
   :: forall params m fun
-  .  MonadIO m
+  .  HasCallStack
+  => MonadIO m
   => QueryWithParams params m fun
   => HasCallStack
   => CypherDSLParams params ()

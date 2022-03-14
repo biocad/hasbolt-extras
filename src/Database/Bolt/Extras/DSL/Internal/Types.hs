@@ -29,12 +29,12 @@ module Database.Bolt.Extras.DSL.Internal.Types
   , toRelSelector
   ) where
 
-import           Data.Foldable        (foldl')
-import           Data.Map.Strict      (toList)
-import           Data.Text            (Text)
-import           Database.Bolt        (Node (..), URelationship (..),
-                                       Value (..))
-import           Database.Bolt.Extras (BoltId)
+import Data.Foldable        (foldl')
+import Data.Map.Strict      (toList)
+import Data.Text            (Text)
+import Database.Bolt        (Node (..), URelationship (..), Value (..))
+import Database.Bolt.Extras (BoltId)
+import GHC.Stack            (HasCallStack)
 
 -- | Class for Selectors, which can update identifier, labels and props.
 --
@@ -171,12 +171,12 @@ defaultRel = RelSelector Nothing "" [] []
 defR :: RelSelector
 defR = defaultRel
 
-toNodeSelector :: Node -> NodeSelector
+toNodeSelector :: HasCallStack => Node -> NodeSelector
 toNodeSelector Node{..} = defaultNode { nodeLabels      = labels
                                       , nodeProperties  = filter ((/= N ()) . snd) (toList nodeProps)
                                       }
 
-toRelSelector :: URelationship -> RelSelector
+toRelSelector :: HasCallStack => URelationship -> RelSelector
 toRelSelector URelationship{..} = defaultRel { relLabel      = urelType
                                              , relProperties = toList urelProps
                                              }
