@@ -65,7 +65,7 @@ library
                      , aeson-casing >= 0.1.0.5
                      , containers >= 0.5.10.2
                      , free >= 5.0
-                     , hasbolt >= 0.1.6.2
+                     , hasbolt >= 0.1.6.1
                      , lens >= 4.16
                      , mtl >= 2.2.0
                      , neat-interpolation >= 0.3.2.0
