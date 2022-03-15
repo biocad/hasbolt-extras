@@ -15,18 +15,18 @@ module Database.Bolt.Extras.Internal.Cypher
 -- This file contains some converation rules from 'Database.Bolt' types to `Cypher`.
 -------------------------------------------------------------------------------------------------
 
-import           Data.Text                           as T (Text, concat, cons,
-                                                           intercalate, pack,
-                                                           replace, toUpper)
-import           Database.Bolt                       (Value (..))
-import           Database.Bolt.Extras.Internal.Types (Label, Property)
-import           Database.Bolt.Extras.Utils          (currentLoc)
-import           NeatInterpolation                   (text)
+import Data.Text                           as T (Text, concat, cons, intercalate, pack, replace,
+                                                 toUpper)
+import Database.Bolt                       (Value (..))
+import Database.Bolt.Extras.Internal.Types (Label, Property)
+import Database.Bolt.Extras.Utils          (currentLoc)
+import GHC.Stack                           (HasCallStack)
+import NeatInterpolation                   (text)
 
 -- | The class for convertation into Cypher.
 --
 class ToCypher a where
-  toCypher :: a -> Text
+  toCypher :: HasCallStack => a -> Text
 
 -- | Convertation for 'Database.Bolt.Value' into Cypher.
 --

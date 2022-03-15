@@ -8,8 +8,11 @@ module Database.Bolt.Extras.Internal.Types
   , Property
   , ToValue (..)
   , URelationLike (..)
+  , ToIsValue (..)
+  , NodeLikeProps (..)
   ) where
 
+import           GHC.Stack       (HasCallStack)
 import           Data.Map.Strict (Map)
 import           Data.Text       (Text)
 import           Database.Bolt   (Node (..), URelationship (..), Value (..))
@@ -25,29 +28,29 @@ type Property = (Text, Value)
 -- | 'NodeLike' class represents convertable into and from 'Node'.
 --
 class NodeLike a where
-  toNode :: a -> Node
-  fromNode :: Node -> a
+  toNode :: HasCallStack => a -> Node
+  fromNode :: HasCallStack => Node -> a
 
 -- | 'URelationLike' class represents convertable into and from 'URelationship'.
 --
 class URelationLike a where
-  toURelation :: a -> URelationship
-  fromURelation :: URelationship -> a
+  toURelation :: HasCallStack => a -> URelationship
+  fromURelation :: HasCallStack => URelationship -> a
 
 -- | 'ToValue' means that something can be converted into Bolt 'Value'.
 --
 class ToValue a where
-  toValue :: a -> Value
+  toValue :: HasCallStack => a -> Value
 
 -- | 'FromValue' means that something can be converted from Bolt 'Value'.
 --
 class FromValue a where
-  fromValue :: Value -> a
+  fromValue :: HasCallStack => Value -> a
 
 -- | 'Labels' means that labels can be obtained from entity.
 --
 class Labels a where
-  getLabels :: a -> [Label]
+  getLabels :: HasCallStack => a -> [Label]
 
 instance Labels Node where
   getLabels = labels
@@ -58,10 +61,16 @@ instance Labels URelationship where
 -- | 'Properties' means that properties can be obtained from entity.
 --
 class Properties a where
-  getProps :: a -> Map Text Value
+  getProps :: HasCallStack => a -> Map Text Value
 
 instance Properties Node where
   getProps = nodeProps
 
 instance Properties URelationship where
   getProps = urelProps
+
+-- | ToIsValue provides IsValue instance given ToValue
+newtype ToIsValue a = ToIsValue a
+
+-- | NodeLikeProps provides IsValue instance given NodeLike, in form of Map Text Value
+newtype NodeLikeProps a = NodeLikeProps a

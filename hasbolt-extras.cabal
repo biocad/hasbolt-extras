@@ -1,5 +1,5 @@
 name:           hasbolt-extras
-version:        0.0.1.8
+version:        0.0.1.9
 synopsis:       Extras for hasbolt library
 description:    Extras for hasbolt library
 homepage:       https://github.com/biocad/hasbolt-extras#readme
@@ -59,13 +59,13 @@ library
                      , Database.Bolt.Extras.Graph.Internal.Get
                      , Database.Bolt.Extras.Graph.Internal.Put
                      , Database.Bolt.Extras.Graph.Internal.GraphQuery
-                  
+
   build-depends:       base >= 4.8 && <5
                      , aeson >= 1.2.4.0
                      , aeson-casing >= 0.1.0.5
                      , containers >= 0.5.10.2
                      , free >= 5.0
-                     , hasbolt >= 0.1.4.0
+                     , hasbolt >= 0.1.6.1
                      , lens >= 4.16
                      , mtl >= 2.2.0
                      , neat-interpolation >= 0.3.2.0
@@ -98,7 +98,7 @@ test-suite doctest
   hs-source-dirs:      test
   main-is:             Doctest.hs
 
-  build-depends:       base >= 4.8 && < 5  
+  build-depends:       base >= 4.8 && < 5
                      , hasbolt-extras
                      , doctest >= 0.16
 
