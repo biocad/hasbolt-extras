@@ -77,10 +77,12 @@ instance FromValue Int where
 
 instance FromValue Double where
   fromValue (F doubleV) = doubleV
+  fromValue (I intV) = fromIntegral intV
   fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Double"
 
 instance FromValue Float where
   fromValue (F doubleV) = double2Float doubleV
+  fromValue (I intV) = fromIntegral intV
   fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Float"
 
 instance FromValue Text where
