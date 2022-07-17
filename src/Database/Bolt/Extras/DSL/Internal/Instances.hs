@@ -122,6 +122,7 @@ instance ToCypher PathSelector where
 
 instance ToCypher Selector where
   toCypher (PS ps)  = toCypher ps
+  toCypher (PSwN (name, ps)) = name <> "=" <> toCypher ps   
   toCypher (TS txt) = txt
 
 instance ToCypher Selectors where
