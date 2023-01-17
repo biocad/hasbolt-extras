@@ -75,7 +75,7 @@ import           Type.Reflection (Typeable)
 >>> :load Database.Bolt.Extras Database.Bolt.Extras.Generic
 >>> import GHC.Generics
 >>> import Database.Bolt.Extras.Generic
->>> import Database.Bolt (Value (..))
+>>> import Database.Bolt (Value (..), IsValue (..), RecordValue (..))
 -}
 
 newtype BoltGeneric a
