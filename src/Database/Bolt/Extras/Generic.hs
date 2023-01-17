@@ -70,6 +70,13 @@ import           Type.Reflection (Typeable)
 -- "perfect!"
 -- ...
 -- ...
+{- $setup
+>>> :set -XDerivingStrategies -XDerivingVia
+>>> :load Database.Bolt.Extras Database.Bolt.Extras.Generic
+>>> import GHC.Generics
+>>> import Database.Bolt.Extras.Generic
+>>> import Database.Bolt (Value (..))
+-}
 
 newtype BoltGeneric a
   = BoltGeneric a
