@@ -38,7 +38,7 @@ import           Type.Reflection (Typeable)
 -- >>> :{
 -- data Color = Red | Green | Blue
 --   deriving (Eq, Show, Generic)
---   deriving (IsValue, RecordValue) via BoltGeneral Color
+--   deriving (IsValue, RecordValue) via BoltGeneric Color
 --
 -- data MyRec = MyRec
 --   { field1 :: Int
@@ -47,7 +47,7 @@ import           Type.Reflection (Typeable)
 --   , field4 :: Color
 --   }
 --   deriving (Eq, Show, Generic)
---   deriving (IsValue, RecordValue) via BoltGeneral MyRec
+--   deriving (IsValue, RecordValue) via BoltGeneric MyRec
 --
 -- data MyHardRec = MyHard
 --   { field1h :: Int
@@ -55,7 +55,7 @@ import           Type.Reflection (Typeable)
 --   , field3h :: MyRec
 --   }
 --   deriving (Eq, Show, Generic)
---   deriving (IsValue, RecordValue) via BoltGeneral MyHardRec
+--   deriving (IsValue, RecordValue) via BoltGeneric MyHardRec
 -- :}
 -- 
 -- >>> toValue Red
@@ -74,18 +74,18 @@ import           Type.Reflection (Typeable)
 -- ...
 -- ...
 
-newtype BoltGeneral a
-  = BoltGeneral a
+newtype BoltGeneric a
+  = BoltGeneric a
   deriving (Eq, Show, Generic)
 
-instance (Generic a, GIsValue (Rep a)) => IsValue (BoltGeneral a) where
-  toValue (BoltGeneral a) =
+instance (Generic a, GIsValue (Rep a)) => IsValue (BoltGeneric a) where
+  toValue (BoltGeneric a) =
     case gIsValue defaultOptions (from a) of
       Left err -> error err
       Right res -> res
 
-instance (Typeable a, Generic a, GRecordValue (Rep a)) => RecordValue (BoltGeneral a) where
-  exactEither v = BoltGeneral . to <$> gExactEither id (Nothing, v)
+instance (Typeable a, Generic a, GRecordValue (Rep a)) => RecordValue (BoltGeneric a) where
+  exactEither v = BoltGeneric . to <$> gExactEither id (Nothing, v)
 
 class GIsValue rep where
   gIsValue :: Options -> rep a -> Either String Value
