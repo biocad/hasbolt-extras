@@ -76,7 +76,7 @@ import           Prelude hiding (lookup)
 >>> :load Database.Bolt.Extras Database.Bolt.Extras.Generic
 >>> import GHC.Generics
 >>> import Database.Bolt.Extras.Generic
->>> import Data.Text (Text)
+>>> import Data.Text (Text, pack)
 >>> import Database.Bolt as Bolt (Value (..), IsValue(toValue), RecordValue(exactEither))
 -}
 
