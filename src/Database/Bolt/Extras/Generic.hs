@@ -52,6 +52,9 @@ import           Prelude hiding (lookup)
 --   }
 --   deriving (Eq, Show, Generic)
 --   deriving (IsValue, RecordValue) via BoltGeneric MyHardRec
+-- data FailTest = FailTest Int Int
+--   deriving (Eq, Show, Generic)
+--   deriving (IsValue) via BoltGeneric FailTest
 -- :}
 -- 
 -- >>> Bolt.toValue Red
@@ -64,6 +67,8 @@ import           Prelude hiding (lookup)
 -- M (fromList [("field1h",I 2),("field2h",L [T "Hello!"]),("field3h",M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")]))])
 -- >>> (exactEither . Bolt.toValue) myHardRec == Right myHardRec
 -- True
+-- Bolt.toValue $ FailTest 1 2
+-- • Can't make IsValue for non-record, non-unit constructor
 {- $setup
 >>> :set -XDerivingStrategies -XDerivingVia
 >>> :load Database.Bolt.Extras Database.Bolt.Extras.Generic
@@ -142,9 +147,7 @@ instance (GRecordValue l, GRecordValue r) => GRecordValue (l :*: r) where
 instance (GRecordValue l, GRecordValue r) => GRecordValue (l :+: r) where
   gExactEither v =
     let res = L1 <$> gExactEither @l v in
-    if isRight res
-      then res
-      else R1 <$> gExactEither @r v
+    if isRight res then res else R1 <$> gExactEither @r v
 
 instance (RecordValue a) => GRecordValue (K1 i a) where
   gExactEither v = K1 <$> exactEither v
