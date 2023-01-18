@@ -20,7 +20,7 @@ import           Database.Bolt   (IsValue (..), RecordValue (..), UnpackError (N
                                   Value (..))
 import           GHC.Generics    (C1, D1, Generic (..), K1 (..),
                                   M1 (..), Meta (..), S1, Selector (selName),
-                                  U1 (..), type (:*:) (..), type (:+:) (..))
+                                  U1 (..), type (:*:) (..), type (:+:) (..), Rec0)
 import           GHC.TypeLits    as GHC (KnownSymbol, symbolVal, TypeError, ErrorMessage(Text))
 
 import           Data.Aeson      (Options,
@@ -62,11 +62,6 @@ import           Prelude hiding (lookup)
 -- >>> let myHardRec = MyHard 2 [pack "Hello!"] myRec
 -- >>> Bolt.toValue myHardRec
 -- M (fromList [("field1h",I 2),("field2h",L [T "Hello!"]),("field3h",M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")]))])
--- >>> let res = exactEither myHardRec
--- >>> res
--- Right (M (fromList [("field1h",I 2),("field2h",L [T "Hello!"]),("field3h",M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")]))]))
--- >>> if res == Right myHardRec then "perfect!" else "very bad"
--- "perfect!"
 -- >>> (exactEither . toValue) myHardRec == myHardRec
 -- True
 -- ...
@@ -108,11 +103,8 @@ instance {-# OVERLAPPING #-} (KnownSymbol name) => GIsValue (C1 ('MetaCons name 
 instance (TypeError ('GHC.Text "Can't make IsValue for non-record, non-unit constructor "), GIsValue cs)  => GIsValue (C1 ('MetaCons s1 s2 'False) cs) where
   gIsValue op (M1 cs) = gIsValue op cs
 
-instance (Selector s, GIsValue cs) => GIsValue (S1 s cs) where
-  gIsValue op m@(M1 cs) =
-    case gIsValue op cs of
-      Right v -> Right $ M $ singleton (pack name) v
-      v -> Left $ "selector " ++ name ++ "have strange field: " ++ show v
+instance (Selector s, IsValue a) => GIsValue (S1 s (Rec0 a)) where
+  gIsValue op m@(M1 (K1 v)) = Right $ M $ singleton (pack name) (toValue v)
     where
       name = fieldLabelModifier op (selName m)
 
@@ -130,9 +122,6 @@ instance (GIsValue l, GIsValue r) => GIsValue (l :*: r) where
     case (lRes, rRes) of
       (M ml, M mr) -> Right $ M $ ml <> mr
       _ -> Left "not record product type"
-
-instance (IsValue a) => GIsValue (K1 i a) where
-  gIsValue _ (K1 a) = Right (toValue a)
 
 class GRecordValue rep where
   gExactEither :: Value -> Either UnpackError (rep a)
