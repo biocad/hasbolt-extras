@@ -69,6 +69,7 @@ import           Type.Reflection (Typeable)
 -- >>> (exactEither . Bolt.toValue) myHardRec == Right myHardRec
 -- True
 -- >>> Bolt.toValue $ FailTest 1 2
+-- ^
 -- <interactive>:643:1: error:
 --     • Can't make IsValue for non-record, non-unit constructor 
 --     • In the expression: Bolt.toValue $ FailTest 1 2
