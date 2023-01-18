@@ -67,7 +67,7 @@ import           Prelude hiding (lookup)
 -- M (fromList [("field1h",I 2),("field2h",L [T "Hello!"]),("field3h",M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")]))])
 -- >>> (exactEither . Bolt.toValue) myHardRec == Right myHardRec
 -- True
--- Bolt.toValue $ FailTest 1 2
+-- >>> Bolt.toValue $ FailTest 1 2
 -- • Can't make IsValue for non-record, non-unit constructor
 {- $setup
 >>> :set -XDerivingStrategies -XDerivingVia
