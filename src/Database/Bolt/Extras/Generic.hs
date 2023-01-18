@@ -71,7 +71,7 @@ import           Type.Reflection (Typeable)
 -- >>> Bolt.toValue $ FailTest 1 2
 -- ^
 -- <interactive>:643:1: error:
---     • Can't make IsValue for non-record, non-unit constructor 
+--     • Can't make IsValue for non-record, non-unit constructor
 --     • In the expression: Bolt.toValue $ FailTest 1 2
 --       In an equation for ‘it’: it = Bolt.toValue $ FailTest 1 2
 {- $setup
