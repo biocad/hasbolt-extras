@@ -56,7 +56,7 @@ import           Prelude hiding (lookup)
 -- 
 -- >>> Bolt.toValue Red
 -- T "Red"
--- let myRec = MyRec 1 [pack "hello"] 3.14 Red
+-- >>> let myRec = MyRec 1 [pack "hello"] 3.14 Red
 -- >>> Bolt.toValue myRec
 -- M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")])
 -- >>> let myHardRec = MyHard 2 [pack "Hello!"] myRec
