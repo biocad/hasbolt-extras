@@ -104,7 +104,7 @@ instance GIsValue cs => (GIsValue (C1 ('MetaCons s1 s2 'True) cs)) where
 instance {-# OVERLAPPING #-} (KnownSymbol name) => GIsValue (C1 ('MetaCons name s2 'False) U1) where
   gIsValue op _ = Right $ T $ pack $ constructorTagModifier op $ symbolVal @name Proxy
 
-instance (TypeError ('GHC.Text "Constructor "), GIsValue cs) => GIsValue (C1 ('MetaCons s1 s2 'False) cs) where
+instance (TypeError ('GHC.Text "Can't make IsValue for non-record, non-unit constructor "), GIsValue cs)  => GIsValue (C1 ('MetaCons s1 s2 'False) cs) where
   gIsValue op (M1 cs) = gIsValue op cs
 
 instance (Selector s, GIsValue cs) => GIsValue (S1 s cs) where
