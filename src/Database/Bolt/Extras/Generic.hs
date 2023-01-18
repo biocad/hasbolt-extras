@@ -108,9 +108,6 @@ instance (Selector s, IsValue a) => GIsValue (S1 s (Rec0 a)) where
     where
       name = fieldLabelModifier op (selName m)
 
-instance GIsValue U1 where
-  gIsValue _ _ = Right $ N ()
-
 instance (GIsValue l, GIsValue r) => GIsValue (l :+: r) where
   gIsValue op (L1 l) = gIsValue op l
   gIsValue op (R1 r) = gIsValue op r
@@ -155,7 +152,4 @@ instance (RecordValue a) => GRecordValue (K1 i a) where
   gExactEither v = K1 <$> exactEither v
 
 instance GRecordValue U1 where
-  gExactEither v = 
-    if v == N () 
-      then Right U1 
-      else Left $ Not "fail with Constructor without arguments - it's not ()"
+  gExactEither _ = Right U1
