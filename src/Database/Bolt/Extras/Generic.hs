@@ -69,20 +69,10 @@ import           Type.Reflection (Typeable)
 -- >>> (exactEither . Bolt.toValue) myHardRec == Right myHardRec
 -- True
 -- >>> Bolt.toValue $ FailTest 1 2
--- ^
--- <interactive>:643:1: error:
---     • Can't make IsValue for non-record, non-unit constructor
---     • In the expression: Bolt.toValue $ FailTest 1 2
---       In an equation for ‘it’: it = Bolt.toValue $ FailTest 1 2
+-- ...
+-- ... Can't make IsValue for non-record, non-unit constructor
+-- ...
 --
-{- $setup
->>> :set -XDerivingStrategies -XDerivingVia
->>> :load Database.Bolt.Extras Database.Bolt.Extras.Generic
->>> import GHC.Generics
->>> import Database.Bolt.Extras.Generic
->>> import Data.Text (Text, pack)
->>> import Database.Bolt as Bolt (Value (..), IsValue(toValue), RecordValue(exactEither))
--}
 
 newtype BoltGeneric a
   = BoltGeneric a
@@ -163,3 +153,12 @@ instance (GRecordValue l, GRecordValue r) => GRecordValue (l :+: r) where
 
 instance (RecordValue a) => GRecordValue (K1 i a) where
   gExactEither v = K1 <$> exactEither v
+
+{- $setup
+>>> :set -XDerivingStrategies -XDerivingVia
+>>> :load Database.Bolt.Extras Database.Bolt.Extras.Generic
+>>> import GHC.Generics
+>>> import Database.Bolt.Extras.Generic
+>>> import Data.Text (Text, pack)
+>>> import Database.Bolt as Bolt (Value (..), IsValue(toValue), RecordValue(exactEither))
+-}
