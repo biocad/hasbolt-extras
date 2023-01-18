@@ -62,7 +62,7 @@ import           Prelude hiding (lookup)
 -- >>> let myHardRec = MyHard 2 [pack "Hello!"] myRec
 -- >>> Bolt.toValue myHardRec
 -- M (fromList [("field1h",I 2),("field2h",L [T "Hello!"]),("field3h",M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")]))])
--- >>> (exactEither . toValue) myHardRec == myHardRec
+-- >>> (exactEither . Bolt.toValue) myHardRec == myHardRec
 -- True
 -- ...
 -- ...
