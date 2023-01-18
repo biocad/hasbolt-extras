@@ -74,6 +74,7 @@ import           Type.Reflection (Typeable)
 --     • Can't make IsValue for non-record, non-unit constructor
 --     • In the expression: Bolt.toValue $ FailTest 1 2
 --       In an equation for ‘it’: it = Bolt.toValue $ FailTest 1 2
+--
 {- $setup
 >>> :set -XDerivingStrategies -XDerivingVia
 >>> :load Database.Bolt.Extras Database.Bolt.Extras.Generic
