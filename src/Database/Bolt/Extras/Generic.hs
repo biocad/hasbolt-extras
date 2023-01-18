@@ -64,8 +64,6 @@ import           Prelude hiding (lookup)
 -- M (fromList [("field1h",I 2),("field2h",L [T "Hello!"]),("field3h",M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")]))])
 -- >>> (exactEither . Bolt.toValue) myHardRec == Right myHardRec
 -- True
--- ...
--- ...
 {- $setup
 >>> :set -XDerivingStrategies -XDerivingVia
 >>> :load Database.Bolt.Extras Database.Bolt.Extras.Generic
