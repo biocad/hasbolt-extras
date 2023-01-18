@@ -10,12 +10,10 @@
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeOperators        #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE ViewPatterns         #-}
-
 
 module Database.Bolt.Extras.Generic where
 
-import           Data.Map.Strict (fromList, singleton, toList)
+import           Data.Map.Strict (singleton, lookup)
 import           Data.Proxy      (Proxy (..))
 import           Data.Text       (pack)
 import           Database.Bolt   (IsValue (..), RecordValue (..), UnpackError (Not),
@@ -29,6 +27,7 @@ import           Data.Aeson      (Options,
                                   defaultOptions, fieldLabelModifier, constructorTagModifier)
 import           Data.Either     (isRight)
 import           Type.Reflection (Typeable)
+import           Prelude hiding (lookup)
 
 -- | Wrapper to encode enum-like types as strings in the DB.
 --
@@ -55,13 +54,13 @@ import           Type.Reflection (Typeable)
 --   deriving (IsValue, RecordValue) via BoltGeneric MyHardRec
 -- :}
 -- 
--- >>> toValue Red
+-- >>> Bolt.toValue Red
 -- T "Red"
 -- let myRec = MyRec 1 [pack "hello"] 3.14 Red
--- >>> toValue myRec
+-- >>> Bolt.toValue myRec
 -- M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")])
 -- >>> let myHardRec = MyHard 2 [pack "Hello!"] myRec
--- >>> toValue myHardRec
+-- >>> Bolt.toValue myHardRec
 -- M (fromList [("field1h",I 2),("field2h",L [T "Hello!"]),("field3h",M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")]))])
 -- >>> let res = exactEither @Value myHardRec
 -- >>> res
@@ -76,7 +75,7 @@ import           Type.Reflection (Typeable)
 >>> import GHC.Generics
 >>> import Database.Bolt.Extras.Generic
 >>> import Data.Text (Text)
->>> import Database.Bolt (Value (..), IsValue(toValue), RecordValue(exactEither))
+>>> import Database.Bolt as Bolt (Value (..), IsValue(toValue), RecordValue(exactEither))
 -}
 
 newtype BoltGeneric a
@@ -90,7 +89,7 @@ instance (Generic a, GIsValue (Rep a)) => IsValue (BoltGeneric a) where
       Right res -> res
 
 instance (Typeable a, Generic a, GRecordValue (Rep a)) => RecordValue (BoltGeneric a) where
-  exactEither v = BoltGeneric . to <$> gExactEither (Nothing, v)
+  exactEither v = BoltGeneric . to <$> gExactEither v
 
 class GIsValue rep where
   gIsValue :: Options -> rep a -> Either String Value
@@ -134,7 +133,7 @@ instance (IsValue a) => GIsValue (K1 i a) where
   gIsValue _ (K1 a) = Right (toValue a)
 
 class GRecordValue rep where
-  gExactEither :: (Maybe String, Value) -> Either UnpackError (rep a)
+  gExactEither :: Value -> Either UnpackError (rep a)
 
 instance GRecordValue cs => GRecordValue (D1 meta cs) where
   gExactEither v = M1 <$> gExactEither v
@@ -143,19 +142,16 @@ instance GRecordValue cs => GRecordValue (C1 c cs) where
   gExactEither v = M1 <$> gExactEither v
 
 instance (KnownSymbol name, GRecordValue a) => GRecordValue (S1 ('MetaSel ('Just name) s1 s2 s3) a) where
-  gExactEither (Just name', v) =
-    if name' == symbolVal @name Proxy
-      then M1 <$> gExactEither (Nothing, v)
-      else Left $ Not $ pack $ "bad name:" ++ name' ++ "for selector"
-  gExactEither (Nothing, _) = Left $ Not "selector without name"
+  gExactEither (M m) =
+    case lookup (pack name) m of
+      Just v -> M1 <$> gExactEither v
+      Nothing -> Left $ Not $ pack $ "selector with name:" ++ name ++ " not in record"
+    where
+      name = symbolVal @name Proxy
+  gExactEither _ = Left $ Not "bad structure in selector case"
 
 instance (GRecordValue l, GRecordValue r) => GRecordValue (l :*: r) where
-  gExactEither (_, v) =
-    case v of
-      M m ->
-        let (fromList -> fstL, fromList -> sndL) = splitAt (length m `div` 2) $ toList m in
-        (:*:) <$> gExactEither (Nothing, M fstL) <*> gExactEither (Nothing, M sndL)
-      _ -> Left $ Not "bad structure"
+  gExactEither v = (:*:) <$> gExactEither v <*> gExactEither v
 
 instance (GRecordValue l, GRecordValue r) => GRecordValue (l :+: r) where
   gExactEither v =
@@ -165,10 +161,10 @@ instance (GRecordValue l, GRecordValue r) => GRecordValue (l :+: r) where
       else R1 <$> gExactEither @r v
 
 instance (RecordValue a) => GRecordValue (K1 i a) where
-  gExactEither (_, v) = K1 <$> exactEither v
+  gExactEither v = K1 <$> exactEither v
 
 instance GRecordValue U1 where
-  gExactEither (_, v) = 
+  gExactEither v = 
     if v == N () 
       then Right U1 
       else Left $ Not "fail with Constructor without arguments - it's not ()"
