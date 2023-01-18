@@ -85,7 +85,7 @@ instance (Generic a, GIsValue (Rep a)) => IsValue (BoltGeneric a) where
       Right res -> res
 
 instance (Typeable a, Generic a, GRecordValue (Rep a)) => RecordValue (BoltGeneric a) where
-  exactEither v = BoltGeneric . to <$> gExactEither v
+  exactEither v = BoltGeneric . to <$> gExactEither id v
 
 class GIsValue rep where
   gIsValue :: Options -> rep a -> Either String Value
@@ -120,39 +120,39 @@ instance (GIsValue l, GIsValue r) => GIsValue (l :*: r) where
       _            -> Left "not record product type"
 
 class GRecordValue rep where
-  gExactEither :: Value -> Either UnpackError (rep a)
+  gExactEither :: (String -> String) -> Value -> Either UnpackError (rep a)
 
 instance GRecordValue cs => GRecordValue (D1 meta cs) where
-  gExactEither v = M1 <$> gExactEither v
+  gExactEither modifier v = M1 <$> gExactEither modifier v
 
 instance GRecordValue cs => GRecordValue (C1 ('MetaCons s1 s2 'True) cs) where
-  gExactEither v = M1 <$> gExactEither v
+  gExactEither modifier v = M1 <$> gExactEither modifier v
 
 instance {-# OVERLAPPING #-} (KnownSymbol name) => GRecordValue (C1 ('MetaCons name s2 'False) U1) where
-  gExactEither _ =  Right $ M1 U1
+  gExactEither _ _ =  Right $ M1 U1
 
 instance TypeError ('GHC.Text "Can't make GRecordValue for non-record, non-unit constructor ") => GRecordValue (C1 ('MetaCons s1 s2 'False) cs) where
   gExactEither _ = error "not reachable"
 
 instance (KnownSymbol name, GRecordValue a) => GRecordValue (S1 ('MetaSel ('Just name) s1 s2 s3) a) where
-  gExactEither (M m) =
-    case lookup (pack name) m of
-      Just v -> M1 <$> gExactEither v
+  gExactEither modifier (M m) =
+    case lookup (pack $ modifier name) m of
+      Just v -> M1 <$> gExactEither modifier v
       Nothing -> Left $ Not $ pack $ "selector with name:" ++ name ++ " not in record"
     where
       name = symbolVal @name Proxy
-  gExactEither _ = Left $ Not "bad structure in selector case"
+  gExactEither _ _ = Left $ Not "bad structure in selector case"
 
 instance (GRecordValue l, GRecordValue r) => GRecordValue (l :*: r) where
-  gExactEither v = (:*:) <$> gExactEither v <*> gExactEither v
+  gExactEither modifier v = (:*:) <$> gExactEither modifier v <*> gExactEither modifier v
 
 instance (GRecordValue l, GRecordValue r) => GRecordValue (l :+: r) where
-  gExactEither v =
-    let res = L1 <$> gExactEither @l v in
-    if isRight res then res else R1 <$> gExactEither @r v
+  gExactEither modifier v =
+    let res = L1 <$> gExactEither @l modifier v in
+    if isRight res then res else R1 <$> gExactEither @r modifier v
 
 instance (RecordValue a) => GRecordValue (K1 i a) where
-  gExactEither v = K1 <$> exactEither v
+  gExactEither _ v = K1 <$> exactEither v
 
 {- $setup
 >>> :set -XDerivingStrategies -XDerivingVia
