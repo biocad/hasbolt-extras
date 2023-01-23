@@ -30,8 +30,6 @@ import           Data.Either     (isRight)
 import           Prelude         hiding (lookup)
 import           Type.Reflection (Typeable)
 
--- | Wrapper to encode enum-like types as strings in the DB.
---
 -- Intended usage is with @DerivingVia@:
 --
 -- >>> :{
@@ -146,7 +144,7 @@ instance (KnownSymbol name, GRecordValue a) => GRecordValue (S1 ('MetaSel ('Just
   gExactEither modifier (M m) =
     case lookup (pack $ modifier name) m of
       Just v -> M1 <$> gExactEither modifier v
-      Nothing -> Left $ Not $ pack $ "selector with name:" ++ name ++ " not in record"
+      Nothing -> Left $ Not $ "selector with name:" <> pack name <> " not in record"
     where
       name = symbolVal @name Proxy
   gExactEither _ _ = Left $ Not "bad structure in selector case"
