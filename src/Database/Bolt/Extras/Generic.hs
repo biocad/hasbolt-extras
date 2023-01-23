@@ -74,6 +74,10 @@ import           Type.Reflection (Typeable)
 -- ...
 --
 
+data Color = Red | Green | Blue
+  deriving (Eq, Show, Generic)
+  deriving (IsValue, RecordValue) via BoltGeneric Color
+
 newtype BoltGeneric a
   = BoltGeneric a
   deriving (Eq, Show, Generic)
@@ -129,8 +133,14 @@ instance GRecordValue cs => GRecordValue (C1 ('MetaCons s1 s2 'True) cs) where
   gExactEither modifier v = M1 <$> gExactEither modifier v
 
 instance {-# OVERLAPPING #-} (KnownSymbol name) => GRecordValue (C1 ('MetaCons name s2 'False) U1) where
-  gExactEither _ _ =  Right $ M1 U1
-
+  gExactEither _ (T str) = 
+    if str == name
+      then Right $ M1 U1
+      else Left $ Not $ "expected constructor name: " <> name <> " , but got: " <> str
+    where
+      name = pack $ symbolVal @name Proxy
+  gExactEither _ _ = Left $ Not "bad value"
+ 
 instance TypeError ('GHC.Text "Can't make GRecordValue for non-record, non-unit constructor ") => GRecordValue (C1 ('MetaCons s1 s2 'False) cs) where
   gExactEither _ = error "not reachable"
 
