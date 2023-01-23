@@ -76,10 +76,6 @@ import           Type.Reflection (Typeable)
 -- ...
 --
 
-data Color = Red | Green | Blue
-  deriving (Eq, Show, Generic)
-  deriving (IsValue, RecordValue) via BoltGeneric Color
-
 newtype BoltGeneric a
   = BoltGeneric a
   deriving (Eq, Show, Generic)
