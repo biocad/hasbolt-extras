@@ -12,10 +12,10 @@ module Database.Bolt.Extras.Template.Internal.Converters
 
 import           Data.Map.Strict            (fromList, member, notMember, (!))
 import           Data.Text                  (Text, pack, unpack)
-import           Database.Bolt (Node (..), URelationship (..), Value (..))
-import           Database.Bolt.Extras       (FromValue (..), Labels (..),
+import           Database.Bolt (Node (..), URelationship (..), Value (..), IsValue(..), RecordValue(..))
+import           Database.Bolt.Extras       (Labels (..),
                                              NodeLike (..),
-                                             Properties (..), ToValue (..),
+                                             Properties (..),
                                              URelationLike (..))
 import           Database.Bolt.Extras.Utils (currentLoc, dummyId)
 import           Instances.TH.Lift          ()
@@ -316,9 +316,13 @@ checkProps container = all (\(fieldName, fieldMaybe) -> fieldMaybe || fieldName 
 checkLabels :: Labels t => t -> [Text] -> Bool
 checkLabels container = all (`elem` getLabels container)
 
-getProp :: (Properties t, FromValue a) => t -> (Text, Bool) -> a
-getProp container (fieldName, fieldMaybe) | fieldMaybe && fieldName `notMember` getProps container = fromValue $ N ()
-                                          | otherwise = fromValue (getProps container ! fieldName)
+getProp :: (Properties t, RecordValue a) => t -> (Text, Bool) -> a
+getProp container (fieldName, fieldMaybe) | fieldMaybe && fieldName `notMember` getProps container = exactE $ N ()
+                                          | otherwise = exactE (getProps container ! fieldName)
+  where
+    exactE v = case exactEither v of
+      Right res -> res
+      Left err -> error $ show err
 
 unpackError :: Show c => c -> String -> a
 unpackError container label = error $ $currentLoc ++ " could not unpack " ++ label ++ " from " ++ show container

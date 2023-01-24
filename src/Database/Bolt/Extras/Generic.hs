@@ -1,91 +1,170 @@
 {-# LANGUAGE AllowAmbiguousTypes  #-}
 {-# LANGUAGE DataKinds            #-}
 {-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE DerivingVia          #-}
 {-# LANGUAGE FlexibleContexts     #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE KindSignatures       #-}
+{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE ScopedTypeVariables  #-}
 {-# LANGUAGE TypeApplications     #-}
 {-# LANGUAGE TypeOperators        #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Database.Bolt.Extras.Generic where
 
-import Data.Proxy    (Proxy (..))
-import Data.Text     (pack, unpack)
-import Database.Bolt (Value (..))
-import GHC.Generics  (C1, D1, Generic (..), M1 (..), Meta (..), U1 (..), type (:+:) (..))
-import GHC.TypeLits  (KnownSymbol, symbolVal)
+import           Data.Map.Strict (lookup, singleton)
+import           Data.Proxy      (Proxy (..))
+import           Data.Text       (pack)
+import           Database.Bolt   (IsValue (..), RecordValue (..),
+                                  UnpackError (Not), Value (..))
+import           GHC.Generics    (C1, D1, Generic (..), K1 (..), M1 (..),
+                                  Meta (..), Rec0, S1, Selector (selName),
+                                  U1 (..), type (:*:) (..), type (:+:) (..))
+import           GHC.TypeLits    as GHC (ErrorMessage (Text), KnownSymbol,
+                                         TypeError, symbolVal)
 
-import Control.Applicative                 ((<|>))
-import Database.Bolt.Extras.Internal.Types (FromValue (..), ToValue (..))
-import Type.Reflection                     (Typeable, typeRep)
+import           Data.Aeson      (Options, constructorTagModifier,
+                                  defaultOptions, fieldLabelModifier)
+import           Data.Either     (isRight)
+import           Prelude         hiding (lookup)
+import           Type.Reflection (Typeable)
 
--- | Wrapper to encode enum-like types as strings in the DB.
---
 -- Intended usage is with @DerivingVia@:
 --
 -- >>> :{
 -- data Color = Red | Green | Blue
---   deriving (Show, Generic)
---   deriving (ToValue, FromValue) via BoltEnum Color
+--   deriving (Eq, Show, Generic)
+--   deriving (IsValue, RecordValue) via BoltGeneric Color
+-- data MyRec = MyRec
+--   { field1 :: Int
+--   , field2 :: [Text]
+--   , field3 :: Double
+--   , field4 :: Color
+--   }
+--   deriving (Eq, Show, Generic)
+--   deriving (IsValue, RecordValue) via BoltGeneric MyRec
+-- data MyHardRec = MyHard
+--   { field1h :: Int
+--   , field2h :: [Text]
+--   , field3h :: MyRec
+--   }
+--   deriving (Eq, Show, Generic)
+--   deriving (IsValue, RecordValue) via BoltGeneric MyHardRec
+-- data FailTest = FailTest Int Int
+--   deriving (Eq, Show, Generic)
+--   deriving (IsValue, RecordValue) via BoltGeneric FailTest
 -- :}
 --
--- >>> toValue Red
+-- >>> Bolt.toValue Red
 -- T "Red"
--- >>> fromValue (T "Blue") :: Color
--- Blue
--- >>> fromValue (T "Brown") :: Color
--- *** Exception: Could not unpack unknown value Brown of Color
+-- >>> Bolt.toValue Blue
+-- T "Blue"
+-- >>> let myRec = MyRec 1 [pack "hello"] 3.14 Red
+-- >>> Bolt.toValue myRec
+-- M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")])
+-- >>> let myHardRec = MyHard 2 [pack "Hello!"] myRec
+-- >>> Bolt.toValue myHardRec
+-- M (fromList [("field1h",I 2),("field2h",L [T "Hello!"]),("field3h",M (fromList [("field1",I 1),("field2",L [T "hello"]),("field3",F 3.14),("field4",T "Red")]))])
+-- >>> (exactEither . Bolt.toValue) myHardRec == Right myHardRec
+-- True
+-- >>> Bolt.toValue $ FailTest 1 2
 -- ...
+-- ... Can't make IsValue for non-record, non-unit constructor
 -- ...
-newtype BoltEnum a
-  = BoltEnum a
+--
+
+newtype BoltGeneric a
+  = BoltGeneric a
   deriving (Eq, Show, Generic)
 
-instance (Generic a, GToValue (Rep a)) => ToValue (BoltEnum a) where
-  toValue (BoltEnum a) = T $ pack $ gToValue $ from a
+instance (Generic a, GIsValue (Rep a)) => IsValue (BoltGeneric a) where
+  toValue (BoltGeneric a) =
+    case gIsValue defaultOptions (from a) of
+      Left err  -> error err
+      Right res -> res
 
-instance (Typeable a, Generic a, GFromValue (Rep a)) => FromValue (BoltEnum a) where
-  fromValue (T str) =
-    case gFromValue $ unpack str of
-      Nothing -> error $ "Could not unpack unknown value " <> unpack str <> " of " <> show (typeRep @a)
-      Just rep -> BoltEnum $ to rep
-  fromValue v = error $ "Could not unpack " <> show v <> " as " <> show (typeRep @a)
+instance (Typeable a, Generic a, GRecordValue (Rep a)) => RecordValue (BoltGeneric a) where
+  exactEither v = BoltGeneric . to <$> gExactEither id v
 
-class GToValue rep where
-  gToValue :: rep a -> String
+class GIsValue rep where
+  gIsValue :: Options -> rep a -> Either String Value
 
-instance GToValue cs => GToValue (D1 meta cs) where
-  gToValue (M1 cs) = gToValue cs
+instance GIsValue cs => GIsValue (D1 meta cs) where
+  gIsValue op (M1 cs) = gIsValue op cs
 
-instance KnownSymbol name => GToValue (C1 ('MetaCons name fixity rec) U1) where
-  gToValue _ = symbolVal @name Proxy
+instance GIsValue cs => (GIsValue (C1 ('MetaCons s1 s2 'True) cs)) where
+  gIsValue op (M1 cs) = gIsValue op cs
 
-instance (GToValue l, GToValue r) => GToValue (l :+: r) where
-  gToValue (L1 l) = gToValue l
-  gToValue (R1 r) = gToValue r
+instance {-# OVERLAPPING #-} (KnownSymbol name) => GIsValue (C1 ('MetaCons name s2 'False) U1) where
+  gIsValue op _ = Right $ T $ pack $ constructorTagModifier op $ symbolVal @name Proxy
 
-class GFromValue rep where
-  gFromValue :: String -> Maybe (rep a)
+instance TypeError ('GHC.Text "Can't make IsValue for non-record, non-unit constructor ")  => GIsValue (C1 ('MetaCons s1 s2 'False) cs) where
+  gIsValue _ _ = error "not reachable"
 
-instance GFromValue cs => GFromValue (D1 meta cs) where
-  gFromValue = fmap M1 . gFromValue @cs
+instance (Selector s, IsValue a) => GIsValue (S1 s (Rec0 a)) where
+  gIsValue op m@(M1 (K1 v)) = Right $ M $ singleton (pack name) (toValue v)
+    where
+      name = fieldLabelModifier op (selName m)
 
-instance KnownSymbol name => GFromValue (C1 ('MetaCons name fixity rec) U1) where
-  gFromValue str =
-    if str == symbolVal @name Proxy
-       then Just $ M1 U1
-       else Nothing
+instance (GIsValue l, GIsValue r) => GIsValue (l :+: r) where
+  gIsValue op (L1 l) = gIsValue op l
+  gIsValue op (R1 r) = gIsValue op r
 
-instance (GFromValue l, GFromValue r) => GFromValue (l :+: r) where
-  gFromValue str = L1 <$> gFromValue @l str <|> R1 <$> gFromValue @r str
+instance (GIsValue l, GIsValue r) => GIsValue (l :*: r) where
+  gIsValue op (l :*: r) = do
+    lRes <- gIsValue op l
+    rRes <- gIsValue op r
+    case (lRes, rRes) of
+      (M ml, M mr) -> Right $ M $ ml <> mr
+      _            -> Left "not record product type"
+
+class GRecordValue rep where
+  gExactEither :: (String -> String) -> Value -> Either UnpackError (rep a)
+
+instance GRecordValue cs => GRecordValue (D1 meta cs) where
+  gExactEither modifier v = M1 <$> gExactEither modifier v
+
+instance GRecordValue cs => GRecordValue (C1 ('MetaCons s1 s2 'True) cs) where
+  gExactEither modifier v = M1 <$> gExactEither modifier v
+
+instance {-# OVERLAPPING #-} (KnownSymbol name) => GRecordValue (C1 ('MetaCons name s2 'False) U1) where
+  gExactEither _ (T str) = 
+    if str == name
+      then Right $ M1 U1
+      else Left $ Not $ "expected constructor name: " <> name <> " , but got: " <> str
+    where
+      name = pack $ symbolVal @name Proxy
+  gExactEither _ _ = Left $ Not "bad value"
+ 
+instance TypeError ('GHC.Text "Can't make GRecordValue for non-record, non-unit constructor ") => GRecordValue (C1 ('MetaCons s1 s2 'False) cs) where
+  gExactEither _ = error "not reachable"
+
+instance (KnownSymbol name, GRecordValue a) => GRecordValue (S1 ('MetaSel ('Just name) s1 s2 s3) a) where
+  gExactEither modifier (M m) =
+    case lookup (pack $ modifier name) m of
+      Just v -> M1 <$> gExactEither modifier v
+      Nothing -> Left $ Not $ "selector with name:" <> pack name <> " not in record"
+    where
+      name = symbolVal @name Proxy
+  gExactEither _ _ = Left $ Not "bad structure in selector case"
+
+instance (GRecordValue l, GRecordValue r) => GRecordValue (l :*: r) where
+  gExactEither modifier v = (:*:) <$> gExactEither modifier v <*> gExactEither modifier v
+
+instance (GRecordValue l, GRecordValue r) => GRecordValue (l :+: r) where
+  gExactEither modifier v =
+    let res = L1 <$> gExactEither @l modifier v in
+    if isRight res then res else R1 <$> gExactEither @r modifier v
+
+instance (RecordValue a) => GRecordValue (K1 i a) where
+  gExactEither _ v = K1 <$> exactEither v
 
 {- $setup
 >>> :set -XDerivingStrategies -XDerivingVia
 >>> :load Database.Bolt.Extras Database.Bolt.Extras.Generic
 >>> import GHC.Generics
 >>> import Database.Bolt.Extras.Generic
->>> import Database.Bolt (Value (..))
+>>> import Data.Text (Text, pack)
+>>> import Database.Bolt as Bolt (Value (..), IsValue(toValue), RecordValue(exactEither))
 -}
