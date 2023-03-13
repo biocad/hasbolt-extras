@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.1.10] - 2023-01-24
+### Added
+- Add newline for Cyper queries.
+
 ## [0.0.1.9] - 2022-03-14
 ### Added
 - `IsValue` instances for `ToValue` & `NodeLike` via newtypes;
