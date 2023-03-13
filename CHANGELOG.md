@@ -6,9 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
-## [0.0.1.10] - 2023-01-24
+## [0.0.2.1] - 2023-01-24
 ### Added
 - Add newline for Cyper queries.
+## [0.0.2.0] - 2023-01-24
+### Added
+- `BoltGeneric` wrapper for `DerivingVia` to derive `IsValue` and `RecordValue` for Haskell types.
+### Changed
+- `NodeLike` and `RelationLike` classes now use `IsValue` / `RecordValue` instead of `ToValue` /
+  `FromValue`.
+### Removed
+- `BoltEnum` newtype, superseded by `BoltGeneric`.
 
 ## [0.0.1.9] - 2022-03-14
 ### Added

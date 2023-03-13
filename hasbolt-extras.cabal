@@ -1,5 +1,5 @@
 name:           hasbolt-extras
-version:        0.0.1.10
+version:        0.0.2.1
 synopsis:       Extras for hasbolt library
 description:    Extras for hasbolt library
 homepage:       https://github.com/biocad/hasbolt-extras#readme
@@ -22,7 +22,8 @@ tested-with:
    || ==8.8.4
    || ==8.10.7
    || ==9.0.2
-   || ==9.2.2
+   || ==9.2.5
+   || ==9.4.4
 
 source-repository head
   type: git
