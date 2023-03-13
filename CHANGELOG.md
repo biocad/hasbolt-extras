@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.2.1] - 2023-01-24
+### Added
+- Add newline for Cyper queries.
 ## [0.0.2.0] - 2023-01-24
 ### Added
 - `BoltGeneric` wrapper for `DerivingVia` to derive `IsValue` and `RecordValue` for Haskell types.
