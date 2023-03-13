@@ -35,7 +35,7 @@ execute (Text t n)          = tell [t] >> pure n
 -- | Helper to translate 'Expr' with something, which can be translated to cypher.
 --
 executeHelperC :: ToCypher a => Text -> a -> b -> Writer [Text] b
-executeHelperC txt s n = tell [txt <> toCypher s] >> pure n
+executeHelperC txt s n = tell [txt <> toCypher s <> "\n"] >> pure n
 
 -- | Helper to translate 'Expr' with 'Text's.
 --
