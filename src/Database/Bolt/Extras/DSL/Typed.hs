@@ -154,7 +154,10 @@ toCypherQ $ do
      ]
    returnF ["lib"]
 :}
-MERGE (name:Name{name:"CT42"}\nMERGE (user:User{user:"123-456"})\nCREATE (lib:BinderLibrary:Library), (name)-[:NAME_OF]->(lib), (user)-[:USER_CREATED{timestamp:1572340394000}]->(lib)\nRETURN lib
+MERGE (name:Name{name:"CT42"}
+MERGE (user:User{user:"123-456"})
+CREATE (lib:BinderLibrary:Library), (name)-[:NAME_OF]->(lib), (user)-[:USER_CREATED{timestamp:1572340394000}]->(lib)
+RETURN lib
 
 ==== Dropping types
 
