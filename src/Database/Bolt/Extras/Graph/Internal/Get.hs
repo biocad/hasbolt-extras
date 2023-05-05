@@ -89,6 +89,7 @@ import           Database.Bolt.Extras.Graph.Internal.Class         (Extractable 
                                                                     Requestable (..),
                                                                     Returnable (..))
 import           GHC.Generics                                      (Generic)
+import           GHC.Stack                                         (HasCallStack)
 import           Language.Haskell.TH.Syntax                        (Name,
                                                                     nameBase)
 import           NeatInterpolation                                 (text)
@@ -301,7 +302,7 @@ instance Extractable NodeResult where
 instance Extractable RelResult where
   extract = extractFromJSON
 
-extractFromJSON :: (MonadIO m, FromJSON a) => Text -> [Record] -> BoltActionT m [a]
+extractFromJSON :: (HasCallStack, MonadIO m, FromJSON a) => Text -> [Record] -> BoltActionT m [a]
 extractFromJSON var = pure . fmap (\r -> case fromJSON (toJSON (r ! var)) of
                                         Success parsed -> parsed
                                         Error   err    -> error err)
@@ -333,38 +334,38 @@ type GraphGetResponse = Graph NodeName NodeResult RelResult
 
 -- | Extract a node by its name from 'GraphGetResponse' and convert it to user type
 -- with 'fromNode'.
-extractNode :: NodeLike a => NodeName -> GraphGetResponse -> a
+extractNode :: HasCallStack => NodeLike a => NodeName -> GraphGetResponse -> a
 extractNode var graph = graph ^. vertices . at var . non (errorForNode var) . to (fromNode . toNode)
 
 -- | Extract a relation by name of it start and end nodes and convert to user type with 'fromURelation'.
-extractRelation :: URelationLike a => NodeName -> NodeName -> GraphGetResponse -> a
+extractRelation :: HasCallStack => URelationLike a => NodeName -> NodeName -> GraphGetResponse -> a
 extractRelation stVar enVar graph = graph ^. relations . at (stVar, enVar)
                                   . non (errorForRelation stVar enVar)
                                   . to (fromURelation . toURelation)
 
 -- | Extract just node's 'BoltId'.
-extractNodeId :: NodeName -> GraphGetResponse -> BoltId
+extractNodeId :: HasCallStack => NodeName -> GraphGetResponse -> BoltId
 extractNodeId var graph = graph ^. vertices . at var . non (errorForNode var) . to nresId
 
 -- | Extract just relation's 'BoltId'.
-extractRelationId :: NodeName -> NodeName -> GraphGetResponse -> BoltId
+extractRelationId :: HasCallStack => NodeName -> NodeName -> GraphGetResponse -> BoltId
 extractRelationId stVar enVar graph = graph ^. relations . at (stVar, enVar)
                                     . non (errorForRelation stVar enVar)
                                     . to rresId
 
 -- | Extract 'NodeResult'.
-extractNodeAeson :: NodeName -> GraphGetResponse -> NodeResult
+extractNodeAeson :: HasCallStack => NodeName -> GraphGetResponse -> NodeResult
 extractNodeAeson var graph = graph ^. vertices . at var . non (errorForNode var)
 
 -- | Extract 'RelResult'.
-extractRelationAeson :: NodeName -> NodeName -> GraphGetResponse -> RelResult
+extractRelationAeson :: HasCallStack => NodeName -> NodeName -> GraphGetResponse -> RelResult
 extractRelationAeson stVar enVar graph = graph ^. relations . at (stVar, enVar)
                                        . non (errorForRelation stVar enVar)
 
-errorForNode :: NodeName -> a
+errorForNode :: HasCallStack => NodeName -> a
 errorForNode name = error . unpack $ "node with name " <> name <> " doesn't exist"
 
-errorForRelation :: NodeName -> NodeName -> a
+errorForRelation :: HasCallStack => NodeName -> NodeName -> a
 errorForRelation stName enName = error . unpack $ "relation between nodes " <>
                                                   stName <> " and " <> enName <>
                                                   " doesn't exist"

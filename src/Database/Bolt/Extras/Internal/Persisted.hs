@@ -15,6 +15,7 @@ import           Data.Aeson.Casing (aesonPrefix, snakeCase)
 import           Database.Bolt     (Node (..), Relationship (..),
                                     URelationship (..))
 import           GHC.Generics      (Generic (..))
+import           GHC.Stack         (HasCallStack)
 
 -- | 'BoltId' is alias for Bolt 'Node', 'Relationship' and 'URelationship' identities.
 --
@@ -28,14 +29,14 @@ data Persisted a = Persisted { objectId    :: BoltId
 
 -- | This is just check that your 'BoltId' is valid.
 --
-fromInt :: Int -> BoltId
+fromInt :: HasCallStack => Int -> BoltId
 fromInt i | i >= 0    = i
           | otherwise = error "Database.Bolt.Extras.Internal.Persisted: could not create BoltId with identity less then zero."
 
 -- | Common class to get 'BoltId' from the object.
 --
 class GetBoltId a where
-  getBoltId :: a -> BoltId
+  getBoltId :: HasCallStack => a -> BoltId
 
 instance GetBoltId Node where
   getBoltId = fromInt . nodeIdentity
