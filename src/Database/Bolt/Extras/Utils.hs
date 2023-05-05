@@ -15,10 +15,10 @@ import           Data.List              (nub)
 import           Data.Map.Strict        as M ((!), (!?))
 import qualified Data.Map.Strict        as M (union)
 import           Data.Text              (Text)
-import           Database.Bolt          as B (BoltActionT, Node (..), Record,
-                                              RecordValue (..), Value (..))
-import           Language.Haskell.TH    (Exp (..), Lit (..), Loc (..), Q,
-                                         location)
+import           Database.Bolt          as B (BoltActionT, Node (..), Record, RecordValue (..),
+                                              Value (..))
+import           GHC.Stack              (HasCallStack)
+import           Language.Haskell.TH    (Exp (..), Lit (..), Loc (..), Q, location)
 import           Text.Printf            (printf)
 
 
@@ -45,16 +45,16 @@ currentLoc = do
 
 -- | Unpack a value, using 'fail' in 'IO` to report errors.
 {-# DEPRECATED exact "This function exists for compatibility, consider using pure exactEither or exactMaybe instead." #-}
-exact :: (MonadIO m, RecordValue a) => Value -> m a
+exact :: (MonadIO m, RecordValue a, HasCallStack) => Value -> m a
 exact = either (liftIO . fail . show) pure . exactEither
 
 -- | Extract values
 --
-exactValues :: (MonadIO m, RecordValue a) => Text -> [Record] -> m [a]
+exactValues :: HasCallStack => (MonadIO m, RecordValue a) => Text -> [Record] -> m [a]
 exactValues var = mapM (exact . (! var))
 
 -- | Extract values (maybe)
-exactValuesM :: (MonadIO m, RecordValue a) => Text -> [Record] -> BoltActionT m [Maybe a]
+exactValuesM :: (HasCallStack, MonadIO m, RecordValue a) => Text -> [Record] -> BoltActionT m [Maybe a]
 exactValuesM var = mapM (safeExact . (!? var))
   where
     safeExact :: (MonadIO m, RecordValue a) => Maybe B.Value -> BoltActionT m (Maybe a)

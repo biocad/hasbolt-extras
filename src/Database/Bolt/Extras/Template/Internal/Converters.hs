@@ -21,6 +21,7 @@ import           Database.Bolt.Extras.Utils (currentLoc, dummyId)
 import           Instances.TH.Lift          ()
 import           Language.Haskell.TH
 import           Language.Haskell.TH.Syntax
+import           GHC.Stack                  (HasCallStack)
 
 -- Starting with template-haskell-2.16.0.0, 'TupE' constructor accepts @Maybe Exp@, to support
 -- TupleSections. We use this alias for compatibility with both old and new versions.
@@ -99,7 +100,7 @@ uRelationLikeClass = BiClassInfo { className    = ''URelationLike
 --
 -- >>> fromNode barNode :: Foo
 -- Bar {baz = 42.0, quux = "Hello world", quuz = Nothing}
-makeNodeLike :: Name -> Q [Dec]
+makeNodeLike :: HasCallStack => Name -> Q [Dec]
 makeNodeLike name = makeBiClassInstance nodeLikeClass name id
 
 -- | The same as 'makeNodeLike', but applies a function to all field names before storing them
@@ -109,18 +110,18 @@ makeNodeLike name = makeBiClassInstance nodeLikeClass name id
 --
 -- > makeNodeLikeWith ''Foo $ fieldLabelModifier $ aesonPrefix camelCase
 --
-makeNodeLikeWith :: Name -> (String -> String) -> Q [Dec]
+makeNodeLikeWith :: HasCallStack => Name -> (String -> String) -> Q [Dec]
 makeNodeLikeWith = makeBiClassInstance nodeLikeClass
 
 -- | Make an instance of 'URelationLike' class.
 -- Transformations are the same as in 'NodeLike' instance declaration with the only one difference:
 -- 'URelationship' holds only one label (or type), but 'Node' holds list of labels.
 --
-makeURelationLike :: Name -> Q [Dec]
+makeURelationLike :: HasCallStack => Name -> Q [Dec]
 makeURelationLike name = makeBiClassInstance uRelationLikeClass name id
 
 -- | As 'makeNodeLikeWith'.
-makeURelationLikeWith :: Name -> (String -> String) -> Q [Dec]
+makeURelationLikeWith :: HasCallStack => Name -> (String -> String) -> Q [Dec]
 makeURelationLikeWith = makeBiClassInstance uRelationLikeClass
 
 -- | Declare an instance of `bijective` class using TemplateHaskell.
@@ -152,7 +153,7 @@ makeURelationLikeWith = makeBiClassInstance uRelationLikeClass
 -- >      , nodeProps = fromList [("specie", T "text value"), ("vgen", F %float_value), ("fr", F %float_value), ("sim", F %float_value), ("germline", T "text value")]
 -- >     }
 --
-makeBiClassInstance :: BiClassInfo -> Name -> (String -> String) -> Q [Dec]
+makeBiClassInstance :: HasCallStack => BiClassInfo -> Name -> (String -> String) -> Q [Dec]
 makeBiClassInstance BiClassInfo {..} typeCon fieldLabelModifier = do
   -- reify function gives Info about Name such as constructor name and its fields. See: https://hackage.haskell.org/package/template-haskell-2.12.0.0/docs/Language-Haskell-TH.html#t:Info
   TyConI declaration <- reify typeCon
@@ -184,7 +185,7 @@ makeBiClassInstance BiClassInfo {..} typeCon fieldLabelModifier = do
 
 -- | Extract information about type: constructor name and field record names with corresponding types.
 --
-getConsFields :: Con -> (Name, [(Name, Type)])
+getConsFields :: HasCallStack => Con -> (Name, [(Name, Type)])
 getConsFields (RecC cName decs)           = (cName, fmap (\(fname, _, ftype) -> (fname, ftype)) decs)
 getConsFields (ForallC _ _ cons)          = getConsFields cons
 getConsFields (RecGadtC (cName:_) decs _) = (cName, fmap (\(fname, _, ftype) -> (fname, ftype)) decs)
@@ -194,7 +195,7 @@ getConsFields _                           = error $ $currentLoc ++ "unsupported 
 
 -- | Parse a type declaration and retrieve its name and its constructors.
 --
-getTypeCons :: Dec -> (Name, [Con])
+getTypeCons :: HasCallStack => Dec -> (Name, [Con])
 getTypeCons (DataD    _ typeName _ _ constructors _) = (typeName, constructors)
 getTypeCons (NewtypeD _ typeName _ _ constructor  _) = (typeName, [constructor])
 getTypeCons otherDecl = error $ $currentLoc ++ "unsupported declaration: " ++ show otherDecl ++ "\nShould be either 'data' or 'newtype'."
@@ -316,7 +317,7 @@ checkProps container = all (\(fieldName, fieldMaybe) -> fieldMaybe || fieldName 
 checkLabels :: Labels t => t -> [Text] -> Bool
 checkLabels container = all (`elem` getLabels container)
 
-getProp :: (Properties t, RecordValue a) => t -> (Text, Bool) -> a
+getProp :: (HasCallStack, Properties t, RecordValue a) => t -> (Text, Bool) -> a
 getProp container (fieldName, fieldMaybe) | fieldMaybe && fieldName `notMember` getProps container = exactE $ N ()
                                           | otherwise = exactE (getProps container ! fieldName)
   where
@@ -324,7 +325,7 @@ getProp container (fieldName, fieldMaybe) | fieldMaybe && fieldName `notMember` 
       Right res -> res
       Left err -> error $ show err
 
-unpackError :: Show c => c -> String -> a
+unpackError :: HasCallStack => Show c => c -> String -> a
 unpackError container label = error $ $currentLoc ++ " could not unpack " ++ label ++ " from " ++ show container
 
 {- $setup

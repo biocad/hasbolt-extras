@@ -8,6 +8,7 @@ module Database.Bolt.Extras.Graph.Internal.Class
 import           Control.Monad.IO.Class (MonadIO)
 import           Data.Text              (Text)
 import           Database.Bolt          (BoltActionT, Record)
+import           GHC.Stack              (HasCallStack)
 
 -- | Entity which can be requested from Neo4j in @MATCH@ operator.
 --
@@ -27,4 +28,4 @@ class Returnable a where
 -- | Entity which can be extracted from 'Record' by its name.
 --
 class Extractable a where
-  extract :: MonadIO m => Text -> [Record] -> BoltActionT m [a]
+  extract :: (HasCallStack, MonadIO m) => Text -> [Record] -> BoltActionT m [a]

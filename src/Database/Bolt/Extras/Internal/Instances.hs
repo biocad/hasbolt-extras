@@ -2,11 +2,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE InstanceSigs      #-}
 
 module Database.Bolt.Extras.Internal.Instances () where
 
 import           Control.Applicative                 ((<|>))
 import           Data.Aeson                          (FromJSON (..), ToJSON (..))
+import qualified Data.Aeson                          as A
 import           Data.Aeson.Types                    (Parser)
 import           Data.List.NonEmpty                  (NonEmpty (..), toList)
 import           Data.Map.Strict                     (Map)
@@ -18,6 +20,7 @@ import           Database.Bolt.Extras.Internal.Types (FromValue (..), NodeLike (
                                                       ToValue (..))
 import           Database.Bolt.Extras.Utils          (currentLoc)
 import           GHC.Float                           (double2Float, float2Double)
+import           GHC.Stack                           (HasCallStack)
 
 
 instance ToValue () where
@@ -69,30 +72,30 @@ instance FromValue () where
 
 instance FromValue Bool where
   fromValue (B boolV) = boolV
-  fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Bool"
+  fromValue v         = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Bool"
 
 instance FromValue Int where
   fromValue (I intV) = intV
-  fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Int"
+  fromValue v        = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Int"
 
 instance FromValue Double where
   fromValue (F doubleV) = doubleV
-  fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Double"
+  fromValue v           = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Double"
 
 instance FromValue Float where
   fromValue (F doubleV) = double2Float doubleV
-  fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Float"
+  fromValue v           = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Float"
 
 instance FromValue Text where
   fromValue (T textV) = textV
-  fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Text"
+  fromValue v         = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Text"
 
 instance FromValue Value where
   fromValue = id
 
 instance FromValue a => FromValue [a] where
   fromValue (L listV) = fmap fromValue listV
-  fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into [Value]"
+  fromValue v         = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into [Value]"
 
 instance FromValue a => FromValue (NonEmpty a) where
   fromValue v =
@@ -113,6 +116,7 @@ instance FromValue DB.Structure where
   fromValue v      = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Structure"
 
 instance ToJSON Value where
+  toJSON :: HasCallStack => Value -> A.Value
   toJSON (N _) = toJSON ()
   toJSON (B b) = toJSON b
   toJSON (I i) = toJSON i
@@ -123,6 +127,7 @@ instance ToJSON Value where
   toJSON _     = error "Database.Bolt.Extras.Internal.Instances: could not convert to json Database.Bolt.Value"
 
 instance FromJSON Value where
+  parseJSON :: HasCallStack => A.Value -> Parser Value
   parseJSON v = B <$> (parseJSON v :: Parser Bool)
             <|> I <$> (parseJSON v :: Parser Int)
             <|> F <$> (parseJSON v :: Parser Double)
