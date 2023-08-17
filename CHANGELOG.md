@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.3.0] - 2023-08-17
+### Added
+- `IsString` instance for `Cond` and `Conds`.
+### Fixed
+- `:&&:` and `:||:` render to Cypher with correct operator precedence.
+
 ## [0.0.2.2] - 2023-05-05
 ### Changed
 - Add `HasCallStack` to a lot of unpacking functions.
