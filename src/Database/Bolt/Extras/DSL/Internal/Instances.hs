@@ -11,6 +11,7 @@ module Database.Bolt.Extras.DSL.Internal.Instances () where
 
 import           Control.Monad.Writer                    (execWriter, tell)
 import           Data.Function                           ((&))
+import           Data.String                             (IsString(..))
 import           Data.Proxy                              (Proxy (..))
 import           Data.Text                               (intercalate, pack)
 import           Database.Bolt.Extras                    (ToCypher (..),
@@ -127,14 +128,22 @@ instance ToCypher Selector where
 instance ToCypher Selectors where
   toCypher = intercalate ", " . fmap toCypher
 
+instance IsString Cond where
+  fromString str = TC $ pack str
+
 instance ToCypher Cond where
   toCypher (ID t bId)   = pack $ printf "ID(%s)=%d" t (fromInt bId)
   toCypher (IDs t bIds) = pack $ printf "ID(%s) in [%s]" t (intercalate ", " $ fmap (pack . show) bIds)
   toCypher (IN t txts)  = pack $ printf "%s in [%s]" t (intercalate ", " $ fmap (\s -> [text|"$s"|]) txts)
   toCypher (TC txt)     = txt
 
+instance IsString Conds where
+  fromString str = C $ TC $ pack str
+
 instance ToCypher Conds where
-  toCypher (fcp :&&: scp) = toCypher fcp <> " AND " <> toCypher scp
-  toCypher (fcp :||: scp) = toCypher fcp <> " OR " <> toCypher scp
-  toCypher (Not cp)       = "NOT " <> toCypher cp
+  -- Adding "(" ")" to have correct precedence in Cypher
+  -- "(a :&&: b) :||: c" should mean "(a AND b) OR c", not "a AND b OR c"
+  toCypher (fcp :&&: scp) = "(" <> toCypher fcp <> ") AND (" <> toCypher scp <> ")"
+  toCypher (fcp :||: scp) = "(" <> toCypher fcp <> ") OR (" <> toCypher scp <> ")"
+  toCypher (Not cp)       = "NOT (" <> toCypher cp <> ")"
   toCypher (C cp)         = toCypher cp

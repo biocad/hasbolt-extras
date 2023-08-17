@@ -133,6 +133,12 @@ data Cond = ID Text BoltId    -- ^ ID(txt) = boltId
 
 infixr 3 :&&:
 infixr 2 :||:
+-- | Conditional expressions in Cypher.
+--
+-- Can be used with @OverloadedStrings@ to include atomic text conditions.
+--
+-- > toCypher $ ("x = 5" :&&: "y = 10") :||: Not "z = 20"
+-- > "((x = 5) AND (y = 10)) OR (NOT (z = 20))"
 data Conds = Conds :&&: Conds -- ^ 'condition' AND 'condition'
            | Conds :||: Conds -- ^ 'condition' OR 'condition'
            | C Cond           -- ^ single 'condition'
