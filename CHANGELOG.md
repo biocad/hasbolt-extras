@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.0.3.1] - 2023-09-28
+### Changed
+- `FromValue` now can unpack DB `Int` as Haskell `Double`.
+- Verbose error in TemplateHaskell converter when property of a node or a relationship can't be
+  unpacked.
+
 ## [0.0.3.0] - 2023-08-17
 ### Added
 - `IsString` instance for `Cond` and `Conds`.
