@@ -323,7 +323,10 @@ getProp container (fieldName, fieldMaybe) | fieldMaybe && fieldName `notMember` 
   where
     exactE v = case exactEither v of
       Right res -> res
-      Left err -> error $ show err
+      Left err -> error
+        $ "Could not unpack "
+        <> unpack fieldName <> ": " <> show err
+        <> ", value: " <> show v
 
 unpackError :: HasCallStack => Show c => c -> String -> a
 unpackError container label = error $ $currentLoc ++ " could not unpack " ++ label ++ " from " ++ show container
