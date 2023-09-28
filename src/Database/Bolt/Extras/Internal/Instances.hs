@@ -19,7 +19,7 @@ import           Database.Bolt.Extras.Internal.Types (FromValue (..), NodeLike (
                                                       NodeLikeProps (..), ToIsValue (..),
                                                       ToValue (..))
 import           Database.Bolt.Extras.Utils          (currentLoc)
-import           GHC.Float                           (double2Float, float2Double)
+import           GHC.Float                           (double2Float, float2Double, int2Double)
 import           GHC.Stack                           (HasCallStack)
 
 
@@ -80,6 +80,7 @@ instance FromValue Int where
 
 instance FromValue Double where
   fromValue (F doubleV) = doubleV
+  fromValue (I intV)    = int2Double intV
   fromValue v           = error $ $currentLoc ++ "could not unpack " ++ show v ++ " into Double"
 
 instance FromValue Float where
