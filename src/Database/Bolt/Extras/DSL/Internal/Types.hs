@@ -118,6 +118,7 @@ infixl 1 <-:
 ns <-: pp = P ns :<-!: pp
 
 data Selector = PS PathSelector -- ^ path selector
+              | PSwN (Text, Selector) -- ^ named selector
               | TS Text         -- ^ free text selector
   deriving (Show, Eq)
 
